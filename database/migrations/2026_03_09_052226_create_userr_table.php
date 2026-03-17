@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('userr', function (Blueprint $table) {
@@ -18,15 +15,13 @@ return new class extends Migration
             $table->string('email', 320)->unique('ux_userr_email');
             $table->string('name_company', 100);
             $table->string('password', 255);
-            $table->integer('rol_idfk')->index('fk_userr_rol');
-            $table->integer('company_idfk')->nullable()->index('fk_userr_company');
+            $table->integer('rol_idfk');
+            $table->integer('company_idfk')->nullable();
             $table->boolean('state')->default(true);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
+
     public function down(): void
     {
         Schema::dropIfExists('userr');

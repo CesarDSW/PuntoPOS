@@ -1,29 +1,41 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-</head>
-<body>
-    <h1>Iniciar Sesion</h1>
-    <form method="POST" action="{{ route('login') }}">
+@extends('layout.auth_design')
+
+@section('content')
+  <h1 class="auth-title">Iniciar sesion</h1>
+  <p class="auth-subtitle">Accede a tu cuenta para continuar</p>
+  
+  @if(session('success'))
+  <div class="success-box">
+    {{ session('success') }}
+  </div>
+  @endif
+
+  @if($errors->any())
+  <div class="error-box">
+    @foreach($errors->all() as $error)
+    <div>{{ $error }}</div>
+    @endforeach
+  </div>
+  @endif
+
+  <form method="POST" action="{{ route('login') }}">
         @csrf
 
-        <input type="email" name="email" placeholder="Correo" value="{{ old('email') }}">
+        <div class="form-group">
+            <label class="form-label">Correo electrónico</label>
+            <input type="email" name="email" class="form-input" value="{{ old('email') }}" required>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">Contraseña</label>
+            <input type="password" name="password" class="form-input" required>
+        </div>
 
-        <input type="password" name="password" placeholder="Contraseña">
-        <br>
-
-        <button type="submit">Iniciar sesion</button>
+        <button type="submit" class="auth-button">Iniciar sesion</button>
     </form>
-
-    @if ($errors->any())
-    <ul>
-        @foreach ($errors->all() as $error)
-            <li>{{ $error }}</li>
-        @endforeach
-    </ul>
-    @endif
-</body>
-</html>
+    
+    <div class="switch-text">
+        ¿No tienes cuenta?<br>
+        <a href="{{ route('register') }}" class="switch-link">Registrarse</a>
+    </div>
+@endsection

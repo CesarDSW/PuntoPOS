@@ -22,9 +22,34 @@ Route::post('/register', [AuthController::class, 'register']);
 
 //Ruta para el dashboard, solo accesible para usuarios autenticados
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    $user = auth()->user();
+
+    $showOnboarding = false;
+    
+    if ($user && $user->company_idfk) {
+        $company = \App\Models\Company::find($user->company_idfk);
+        
+        if ($company && !$company->onboarding_completed) {
+            $showOnboarding = true;
+        }
+    }
+    return view('dashboard', compact('showOnboarding'));
 })->middleware('auth')->name('dashboard');
 
+//Ruta para mandar a llamar el onboarding (ventana para registrar datos) en el dashboard
+Route::post('/onboarding', [AuthController::class, 'storeOnboarding'])
+->middleware('auth')
+->name('onboarding.store');
+
+//Ruta para entrar en configuracion desde el dashboard
+Route::get('/configuracion',[AuthController::class, 'showSettings'])
+->middleware('auth')
+->name('settings');
+
+//Ruta para que en configuracion se puedan editar o agregar datos
+Route::post('/configuracion',[AuthController::class, 'updateSettings'])
+->middleware('auth')
+->name('settings.update');
 
 //Ruta para cerrar sesion
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');

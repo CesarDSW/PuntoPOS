@@ -1,37 +1,55 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro</title>
-</head>
-<body>
-    <h1>Registro</h1>
+@extends('layout.auth_design')
+
+@section('content')
+    <h1 class="auth-title">Crear cuenta</h1>
+    <p class="auth-subtitle">Registra tu usuario y tu negocio</p>
+   
+   @if($errors->any())
+        <div class="error-box">
+            @foreach($errors->all() as $error)
+                <div>{{ $error }}</div>
+            @endforeach
+        </div>
+    @endif
 
     <form method="POST" action="{{ route('register') }}">
     @csrf
 
-    <input type="text" name="name_user" placeholder="Nombre" value="{{ old('name_user') }}" required>
+    <div class="form-group">
+        <label class="form-label">Nombre</label>
+        <input type="text" name="name_user" class="form-input" value="{{ old('name_user') }}" required>
+    </div>
 
-    <input type="text" name="phone" placeholder="Telefono" value="{{ old('phone') }}" required>
+    <div class="form-group">
+        <label class="form-label">Teléfono</label>
+        <input type="text" name="phone" class="form-input" value="{{ old('phone') }}" required>
+    </div>
     
-    <input type="email" name="email" placeholder="Correo" value="{{ old('email') }}" required>
+     <div class="form-group">
+        <label class="form-label">Correo electronico</label>
+        <input type="email" name="email" class="form-input" value="{{ old('email') }}" required>
+    </div>
     
-    <input type="text" name="name_company" placeholder="Nombre de la empresa">
+     <div class="form-group">
+        <label class="form-label">Nombre de la compañia</label>
+        <input type="text" name="name_company" class="form-input" value="{{ old('name_company') }}" required>
+    </div>
+    
+     <div class="form-group">
+        <label class="form-label">Contraseña</label>
+        <input type="password" name="password" class="form-input" required>
+    </div>
 
-    <input type="password" name="password" placeholder="Contraseña">
-
-    <input type="password" name="password_confirmation" placeholder="Confirmar contraseña">
-
-    <button type="submit">Registrarse</button>
+     <div class="form-group">
+        <label class="form-label">Confirmar contraseña</label>
+        <input type="password" name="password_confirmation" class="form-input" required>
+    </div>
+        
+    <button type="submit" class="auth-button">Registrarse</button>
 </form>
 
-@if ($errors->any())
-<ul>
-    @foreach ($errors->all() as $error)
-        <li>{{ $error }}</li>
-    @endforeach
-</ul>
-@endif
-</body>
-</html>
+<div class="switch-text">
+    ¿Ya tienes cuenta?<br>
+    <a href="{{ route('login') }}" class="switch-link">Volver</a>
+</div>
+@endsection
