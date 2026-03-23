@@ -6,7 +6,7 @@ use App\Http\Controllers\AuthController;
 
 //Rutas para el inicio de sesion y registro de usuario
 Route::get('/', function () {
-    return redirect()->route('register');
+    return redirect()->route('login');
 });
 
 
@@ -41,6 +41,7 @@ Route::post('/onboarding', [AuthController::class, 'storeOnboarding'])
 ->middleware('auth')
 ->name('onboarding.store');
 
+//Configuracion
 //Ruta para entrar en configuracion desde el dashboard
 Route::get('/configuracion',[AuthController::class, 'showSettings'])
 ->middleware('auth')
@@ -50,6 +51,27 @@ Route::get('/configuracion',[AuthController::class, 'showSettings'])
 Route::post('/configuracion',[AuthController::class, 'updateSettings'])
 ->middleware('auth')
 ->name('settings.update');
+
+//Ruta para configurar los usuarios accesibles al sistema
+ROUTE::post('/configuración/usuarios', [AuthController::class, 'createUser'])
+->middleware('auth')
+->name('users.store');
+
+//Ruta para cambiar la contraseña del usuario
+Route::post('/password/update', [AuthController::class, 'updatePassword'])
+->middleware('auth')
+->name('password.update');
+
+//Clientes
+//Ruta para entrar a la pagina de clientes desde el dashboard
+Route::get('/cliente', [AuthController::class, 'showCustomers'])
+->middleware('auth')
+->name('customers');
+
+//Ruta para crear nuevos clientes
+Route::post('/cliente', [AuthController::class, 'storeCustomers'])
+->middleware('auth')
+->name('customers.store');
 
 //Ruta para cerrar sesion
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');

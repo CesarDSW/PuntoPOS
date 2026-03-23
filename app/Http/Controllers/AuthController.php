@@ -3,7 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Rol;
 use App\Models\Company;
+use App\Models\Customer;
+use App\Models\Tag;
+use App\Models\TagCustomer;
+use App\Models\Sale;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -11,15 +16,16 @@ use Illuminate\Support\Facades\DB;
 
 class AuthController extends Controller
 {
-    //Registro de usuario
-    //Funcion que manda a llamar el formulario de registro
+    //Autenticación
+        //Registro de usuario
+            //Funcion que manda a llamar el formulario de registro
     public function showRegister()
     {
         return view('auth.register');
     }
 
     
-    //Funcion que procesa el formulario de registro
+            //Funcion que procesa el formulario de registro
     public function register(Request $request)
     {
         $request->validate([
@@ -73,14 +79,14 @@ class AuthController extends Controller
         }   
     }
 
-    //Funcion que manda a llamar el formulario de inicio de sesion.
+            //Funcion que manda a llamar el formulario de inicio de sesion.
     public function showLogin()
     {
         return view('auth.login');
     }
 
-    //Inicio de sesion
-    //Funcion que procesa el formulario de inicio de sesion
+        //Inicio de sesion
+            //Funcion que procesa el formulario de inicio de sesion
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -98,7 +104,7 @@ class AuthController extends Controller
         ]) ->onlyInput('email');
     }
 
-    //Funcion que cierra la sesion del usuario
+            //Funcion que cierra la sesion del usuario
     public function logout(Request $request)
     {
         Auth::logout();
@@ -109,7 +115,36 @@ class AuthController extends Controller
         return redirect()->route('login');
     }
 
-    //Funcion para guardar los datos del onboarding
+            //Funcion que actualiza la contraseña
+    public function updatePassword(Request $request){
+        $request->validate([
+            'current_password' => 'required',
+            'new_password' => 'required|min:8|confirmed',
+        ]);
+
+        $user = Auth::user();
+
+        if(Hash::check($request->new_password, $user->password)){
+            return back()->withErrors([
+                'new_password' => 'La nueva contraseña no puede ser igual a la actual.'
+            ]);
+        }
+
+        if(!Hash::check($request->current_password, $user->password)){
+            return back()->withErrors([
+                'current_password' => 'La contraseña actual es incorrecta.'
+            ]);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->new_password),
+        ]);
+
+        return back()->with('success_password', 'Contraseña actualizada correctamente.');
+    }
+
+    //Dashboard
+        //Funcion para guardar los datos del onboarding
     public function storeOnboarding(Request $request)
     {
         $user = Auth::user();
@@ -144,21 +179,28 @@ class AuthController extends Controller
             'opening_time' => $request->opening_time,
             'closing_time' => $request->closing_time,
             'logo' => $logoPath,
-            'onboardng_completed' => 1,
+            'payment_methods' => $request->payment_methods ? json_encode($request->payment_methods) : null,
+            'onboarding_completed' => 1,
         ]);
 
         return redirect()->route('dashboard')->with('success', 'Configuración inicial guardada.');
     }
 
-    //Funcion para mostrar la configuracion
+    //Configuración
+        //Funcion para mostrar la configuracion
     public function showSettings()
     {
         $user = Auth::user();
         $company = Company::findOrFail($user->company_idfk);
 
-        return view('settings', compact('company'));
+        $roles = DB::table('rol')->get();
+
+        $users = User::where('company_idfk', $user->company_idfk)->get();
+
+        return view('settings', compact('company', 'roles', 'users'));
     }
 
+       //Funcion para actualizar o agregar datos en configuracion
     public function updateSettings(Request $request)
     {
         $user = Auth::user();
@@ -194,7 +236,7 @@ class AuthController extends Controller
         if($request->has('currency')) $data['currency'] = $request->currency;
         if($request->has('opening_time')) $data['opening_time'] = $request->opening_time;
         if($request->has('closing_time')) $data['closing_time'] = $request->closing_time;
-        if($request->has('description_company')) $data['description_company'] = $request->name_company;
+        if($request->has('description_company')) $data['description_company'] = $request->description_company;
         
         if($request->has('payment_methods')) {
             $data['payment_methods'] = json_encode($request->payment_methods);
@@ -211,5 +253,86 @@ class AuthController extends Controller
         }
      
         return redirect()->back()->with('success', 'Configuración actualizada correctamente.');
+    }
+
+        //Funcion para crear un nuevo usuario
+    public function createUser(Request $request)
+    {
+        $request->validate([
+            'name_user' => 'required|string|max:100',
+            'phone' => 'required|string|max:10',
+            'email' => 'required|email|unique:userr,email',
+            'password' => 'required|min:8|confirmed',
+            'rol_idfk' => 'required|integer'
+        ]);
+
+        $authUser = Auth::user();
+
+        User::create([
+            'name_user' => $request->name_user,
+            'phone' => $request->phone,
+            'email' => $request->email,
+            'name_company' => $authUser->name_company,
+            'password' => Hash::make($request->password),
+            'rol_idfk' => $request->rol_idfk,
+            'company_idfk' => $authUser->company_idfk,
+            'state' => 1,
+        ]);
+
+        return redirect()->route('settings', ['tab' => 'usuarios'])
+            ->with('success', 'Usuario registrado correctamente.');
+    }
+
+    //Clientes
+        //Funcion para mostrar la pagina de clientes
+    public function showCustomers()
+    {
+        $user = Auth::user();
+        
+        $customers = Customer::where('company_idfk', $user->company_idfk)->get();
+        $tags = Tag::all();
+
+        return view('customers.index', compact('customers', 'tags'));
+    }
+
+        //Funcion para actualizar o agregar clientes
+    public function storeCustomers(Request $request)
+    {
+        $request->validate([
+            'name_customer' => 'required|string|max:100',
+            'phone' => 'required|string|max:10',
+            'email' => 'required|email|max:320',
+            'tags' => 'nullable|array',
+        ]);
+
+        $user = Auth::user();
+
+        DB::beginTransaction();
+
+        try{
+            $customer = Customer::create([
+            'name_customer' => $request->name_customer,
+            'phone' => $request->phone,
+            'email' => $request->email,
+            'company_idfk' => $user->company_idfk,
+        ]);
+
+        if($request->has('tags')){
+            foreach($request->tags as $tagId){
+                TagCustomer::create([
+                    'customer_idfk' => $customer->customer_id,
+                    'tag_idfk' => $tagId,
+                ]);
+            }
+        }
+
+        DB::commit();
+        
+        return redirect()->route('customers')->with('success', 'Cliente registrado correctamente.');
+        } catch(\Exception $e){
+            DB::rollback();
+
+            dd($e->getMessage());
+        }
     }
 }

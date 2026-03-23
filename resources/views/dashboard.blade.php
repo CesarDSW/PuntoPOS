@@ -40,6 +40,7 @@
                     <div class="form-group">
                         <label>Moneda</label>
                         <select name="currency" id="currencyInput" class="form-input">
+                            <option value="">Selecciona una moneda</option>    
                             <option value="MXN">MXN - Peso Mexicano</option>
                         </select>
                     </div>

@@ -166,9 +166,137 @@
 
             @elseif(request('tab') == 'usuarios')
                 <div class="settings-card">
-                    <h2>Usuarios y roles</h2>
-                    <p>Administra los usuarios que pueden acceder a tu sistema y sus permisos.</p>
+                    <div class="users-header">
+                        <div>
+                            <h2>Usuarios y roles</h2>
+                            <p>Gestiona el acceso al sistema</p>
+                        </div>
+                        
+                        <button type="button" class="btn-save" onClick="openUserModal()">
+                           + Nuevo usuario
+                        </button>
+                    </div>
+                    
+                    <div class="roles-info-grid">
+                        <div class="role-info-card role-admin">
+                            <h3>Administrador</h3>
+                            <p>Control total del sistema, configuración y acceso completo a todas las funciones</p>
+                        </div>
+                                
+                        <div class="role-info-card role-manager">
+                            <h3>Gerente</h3>
+                            <p>Gestion de inventario, usuarios, clientes y reportes operativos.</p>
+                        </div>
+                                
+                        <div class="role-info-card role-cashier">
+                            <h3>Cajero</h3>
+                            <p>Realiza ventas, consulta productos y atiende clientes en el POS.</p>
+                        </div>
+                    </div>    
+                        
+                    <div class="users-list">
+                        @forelse($users as $userItem)
+                        <div class="user-card">
+                            <div>
+                                <h3>{{ $userItem->name_user }}</h3>
+                                <p>{{ $userItem->email }}</p>
+                            </div>
+
+                            <div>
+                                @php
+                                    $roleName = match($userItem->rol_idfk){
+                                        1 => 'Administrador',
+                                        2 => 'Gerente',
+                                        3 => 'Cajero',
+                                        default => 'Sin rol'
+                                    };
+                                @endphp
+
+                                <span class="role-badge">{{ $roleName }}</span>
+                            </div>
+                        </div>
+                        @empty
+                        <p>No hay usuarios registrados.</p>
+                        @endforelse
+                    </div>
                 </div>
+                
+                <div class="modal-overlay" id="userModal">
+                    <div class="modal-box">
+                        <div class="modal-header">
+                            <h2>Nuevo usuario</h2>
+                            <button type="button" class="modal-close" onclick="closeUserModal()">X</button>
+                        </div>
+                        
+                        <form method="POST" action="{{ route('users.store') }}">
+                            @csrf
+                            
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label>Nombre del usuario</label>
+                                    <input type="text" name="name_user" class="form-input" value="{{ old('name_user') }}" required>
+                                </div>
+                                    
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Email</label>
+                                        <input type="email" name="email" class="form-input" value="{{ old('email') }}" required>
+                                    </div>
+                                        
+                                    <div class="form-group">
+                                        <label>Teléfono</label>
+                                        <input type="text" name="phone" class="form-input" value="{{ old('phone') }}" required>
+                                    </div>
+                                </div>
+                                    
+                                <div class="form-group">
+                                    <label>Rol</label>
+                                    <select name="rol_idfk" class="form-input" required>
+                                        <option value="">Selecciona un rol</option>
+                                        @foreach($roles as $rol)
+                                            <option value="{{ $rol->rol_id }}" @selected(old('rol_idfk') == $rol->rol_id)>
+                                                {{ $rol->type_rol }}
+                                            </option>
+                                        @endforeach
+                                        </select>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Contraseña</label>
+                                        <input type="password" name="password" class="form-input" value="{{ old('password') }}" required>
+                                    </div>
+                                        
+                                    <div class="form-group">
+                                        <label>Confirmar contraseña</label>
+                                        <input type="password" name="password_confirmation" class="form-input" required>
+                                    </div>
+                                </div>
+                            </div>
+                                
+                            <div class="modal-footer">
+                                <button type="button" class="btn-secondary" onClick="closeUserModal()">Cancelar</button>
+                                <button type="submit" class="btn-save">Guardar usuario</button>
+                            </div>          
+                        </form>
+                    </div>
+                </div>                   
+                
+                <script>
+                function openUserModal(){
+                    document.getElementById('userModal').style.display = 'flex';
+                }
+
+                function closeUserModal(){
+                    document.getElementById('userModal').style.display = 'none';
+                }
+
+                @if($errors->any() && request('tab') == 'usuarios')
+                    document.addEventListener('DOMContentLoaded', function(){
+                        openUserModal();
+                    });
+                @endif
+                </script>
 
             @elseif(request('tab') == 'pagos')
                 <div class="settings-card">
@@ -222,12 +350,57 @@
     
             @elseif(request('tab') == 'seguridad')
                 <div class="settings-card">
-                    <h2>Seguridad</h2>
-                    <p>Administra las opciones de seguridad para proteger tu cuenta y datos.</p>
-                </div>
+                    <div class="user-header">
+                       <h2>Cambiar contraseña</h2>
+                        <p>Actualiza tu contraseña periodicamente</p>
+                    </div>
+                    
+                    @if(session('success_password'))
+                        <div class="success-box">
+                            {{ session('success_password') }}
+                        </div>
+                    @endif
+
+                    @if($errors->any())
+                        <div class="error-box">
+                            @foreach($errors->all() as $error)
+                                <div>{{ $error }}</div>
+                            @endforeach
+                        </div>
+                    @endif
+
+                        <form method="POST" action="{{ route('password.update') }}">
+                        @csrf
+
+                        <div class="form-group">
+                            <label>Contraseña actual</label>
+                            <input type="password" name="current_password" class="form-input" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Nueva actual</label>
+                            <input type="password" name="new_password" class="form-input" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Confirmar contraseña</label>
+                            <input type="password" name="new_password_confirmation" class="form-input" required>
+                        </div>
+                        
+                        <button type="submit" class="btn-save">Actualizar contraseña</button>
+                    </form>
+                    
+                    <div class="form-group">
+                        <p>Requisitos: La contraseña debe tener al menos 8 caracteres,
+                            incluir mayúsculas, minúsculas y números.</p>
+                    </div>
+               </div>
 
             @elseif(request('tab') == 'preferencias')
                 <div class="settings-card">
+                    <div class="">
+
+                    </div>
                     <h2>Preferencias</h2>
                     <p>Configura tus preferencias personales para una mejor experiencia.</p>
                 </div>

@@ -6,21 +6,14 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('tag', function (Blueprint $table) {
             $table->integer('tag_id', true);
-            $table->string('name_tag', 60);
-            $table->integer('customer_idfk')->index('fk_tag_customer');
+            $table->string('name_tag', 100);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('tag');
