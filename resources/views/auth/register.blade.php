@@ -17,7 +17,7 @@
 
     <div class="form-group">
         <label class="form-label">Nombre</label>
-        <input type="text" name="name_user" class="form-input" value="{{ old('name_user') }}" required>
+        <input type="text" name="name_user" class="form-input" value="{{ old('name_user', $googleUser['name_user'] ?? '') }}" required>
     </div>
 
     <div class="form-group">
@@ -27,7 +27,8 @@
     
      <div class="form-group">
         <label class="form-label">Correo electronico</label>
-        <input type="email" name="email" class="form-input" value="{{ old('email') }}" required>
+        <input type="email" name="email" class="form-input" value="{{ old('email', $googleUser['google_email'] ?? '') }}"
+        {{ isset($googleUser['google_email']) ? 'readonly' : '' }} required>
     </div>
     
      <div class="form-group">

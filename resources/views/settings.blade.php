@@ -73,7 +73,8 @@
                         @if(!empty($company->logo))
                         <div class="form-group">
                             <label>Logo actual</label><br>
-                            <img src="{{ asset('storage/' . $company->logo) }}" alt="Logo de la empresa"
+                            <img src="{{ asset('storage/' . $company->logo) }}" 
+                            alt="Logo de la empresa"
                             style="max-width: 180px; border-radius: 12px; border: 1px solid #d1d5db; padding: 8px;">
                         </div>
                         @endif
@@ -172,7 +173,7 @@
                             <p>Gestiona el acceso al sistema</p>
                         </div>
                         
-                        <button type="button" class="btn-save" onClick="openUserModal()">
+                        <button type="button" class="btn-save" onclick="openUserModal()">
                            + Nuevo usuario
                         </button>
                     </div>
@@ -275,7 +276,7 @@
                             </div>
                                 
                             <div class="modal-footer">
-                                <button type="button" class="btn-secondary" onClick="closeUserModal()">Cancelar</button>
+                                <button type="button" class="btn-secondary" onclick="closeUserModal()">Cancelar</button>
                                 <button type="submit" class="btn-save">Guardar usuario</button>
                             </div>          
                         </form>
@@ -350,14 +351,24 @@
     
             @elseif(request('tab') == 'seguridad')
                 <div class="settings-card">
-                    <div class="user-header">
-                       <h2>Cambiar contraseña</h2>
-                        <p>Actualiza tu contraseña periodicamente</p>
-                    </div>
-                    
+                    <h2>Seguridad</h2>
+                    <p>Administra la seguridad de tu cuenta y protege el acceso a tu negocio.</p>
+
                     @if(session('success_password'))
                         <div class="success-box">
                             {{ session('success_password') }}
+                        </div>
+                    @endif
+
+                    @if(session('status') == 'two-factor-authentication-enabled')
+                        <div class="success-box">
+                            Escanea el código QR y confirma el código de Google Authenticator.
+                        </div>
+                    @endif
+
+                    @if(session('status') == 'two-factor-authentication-confirmed')
+                        <div class="success-box">
+                            La autenticación en dos pasos fue confirmada correctamente.
                         </div>
                     @endif
 
@@ -368,34 +379,118 @@
                             @endforeach
                         </div>
                     @endif
-
+                    
+                    <div class="security-block">
+                        <div class="security-block-header">
+                            <h3>Cambiar contraseña</h3>
+                            <p>Actualiza tu contraseña periódicamente</p>
+                        </div
+                        >
                         <form method="POST" action="{{ route('password.update') }}">
-                        @csrf
+                            @csrf
 
-                        <div class="form-group">
-                            <label>Contraseña actual</label>
-                            <input type="password" name="current_password" class="form-input" required>
-                        </div>
+                            <div class="form-group">
+                                <label>Contraseña actual</label>
+                                <input type="password" name="current_password" class="form-input" required>
+                            </div>
 
-                        <div class="form-group">
-                            <label>Nueva actual</label>
-                            <input type="password" name="new_password" class="form-input" required>
-                        </div>
+                            <div class="form-group">
+                                <label>Nueva actual</label>
+                                <input type="password" name="new_password" class="form-input" required>
+                            </div>
 
-                        <div class="form-group">
-                            <label>Confirmar contraseña</label>
-                            <input type="password" name="new_password_confirmation" class="form-input" required>
+                            <div class="form-group">
+                                <label>Confirmar contraseña</label>
+                                <input type="password" name="new_password_confirmation" class="form-input" required>
+                            </div>
+                        
+                            <div class="security-info-box">
+                                <strong>Requisitos:</strong> La contraseña debe tener al menos 8 caracteres,
+                                incluir mayúsculas, minúsculas y números.
+                            </div>
+
+                            <button type="submit" class="btn-save">Cambiar contraseña</button>
+                        </form>
+                    </div>
+                     
+                    <div class="security-block">
+                        <div class="security-block-header twofa-header">
+                            <div class="twofa-header-icon">📱</div>
+                            <div>
+                                <h3>Autenticación de dos factores (2FA)</h3> 
+                                <p>Agrega una capa extra de seguridad a tu cuenta</p>
+                            </div>
                         </div>
                         
-                        <button type="submit" class="btn-save">Actualizar contraseña</button>
-                    </form>
-                    
-                    <div class="form-group">
-                        <p>Requisitos: La contraseña debe tener al menos 8 caracteres,
-                            incluir mayúsculas, minúsculas y números.</p>
-                    </div>
-               </div>
+                        @if(empty(auth()->user()->two_factor_secret))
+                            <div class="twofa-status-box twofa-status-off">
+                                <div>
+                                    <strong>2FA desactivado</strong>
+                                    <p>Activa la autenticación de dos factores para mayor seguridad.</p>
+                                </div>
+                                
+                                <form method="POST" action="/user/two-factor-authentication">
+                                    @csrf
+                                    
+                                    <button type="submit" class="btn-save">Activar verificación en dos pasos</button>
+                                </form>
+                            </div>
+                        @else
+                            <div class="twofa-status-box twofa-status-on">
+                                <div>
+                                    <strong>2FA en proceso o activado</strong>
+                                    <p>Escanea el código QR con Google Authenticator y confirma el código.</p>
+                                </div>
+                            </div>
 
+                            <div class="twofa-qr-box">
+                                {{!! auth()->user()->twoFactorQrCodeSvg() !!}}
+                            </div>
+
+                            @if(is_null(auth()->user()->two_factor_confirmed_at))
+                                <form method="POST" action="/user/confirmed-two-factor-authentication" class="twofa-confirm-form">
+                                    @csrf
+
+                                    <div class="form-group">
+                                        <label>Código de verificación</label>
+                                        <input type="text" name="code" class="form-input" maxlength="6" placeholder="123456" required>
+                                    </div>
+
+                                <button type="submit" class="btn-save">Confirmar verificación</button>
+                            </form>
+                            
+                            @else
+                                <div class="twofa-confirmed-badge">
+                                    Verificación en dos pasos activada correctamente.
+                                </div>
+                            @endif
+
+                            <div class="recovery-section">
+                                <h4>Códigos de recuperación</h4>
+                                <p>Guárdalos en un lugar seguro. Te servirán si pierdes acceso a tu teléfono.</p>
+                                
+                                <div class="recovery-codes-box">
+                                    @foreach(auth()->user()->recoveryCodes() as $code)
+                                        <div>{{ $code }}</div>
+                                    @endforeach
+                                </div>
+
+                                <form method="POST" action="/user/two-factor-recovery-codes" style="margin-top: 14px;">
+                                    @csrf
+                                    <button type="submit" class="btn-secondary">Regenerar códigos</button>
+                                </form>
+                            </div>
+
+                            <form method="POST" action="/user/two-factor-authentication" style="margin-top: 18px;">
+                                @csrf
+                                @method('DELETE')
+
+                                <button type="submit" class="btn-danger">Desactivar verificación en dos pasos</button>
+                            </form>
+                        @endif
+                    </div>
+                </div>
+                    
             @elseif(request('tab') == 'preferencias')
                 <div class="settings-card">
                     <div class="">

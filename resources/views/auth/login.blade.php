@@ -35,7 +35,15 @@
     </form>
     
     <div class="switch-text">
+        <a href="{{ route('password.request') }}" class="switch-link">¿Olvidaste tu contraseña?</a>
+    </div>
+
+    <a href="{{ route('google.test') }}" class="google-button">
+        Continuar con google
+    </a>
+
+    <div class="switch-text">
         ¿No tienes cuenta?<br>
         <a href="{{ route('register') }}" class="switch-link">Registrarse</a>
-    </div>
+    </div>    
 @endsection

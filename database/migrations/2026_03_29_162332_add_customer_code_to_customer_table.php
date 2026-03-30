@@ -8,14 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('tag', function (Blueprint $table) {
-            $table->integer('tag_id', true);
-            $table->string('name_tag', 100);
+        Schema::table('customer', function (Blueprint $table) {
+            $table->string('customer_code', 20)->nullable()->after('customer_id');
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('tag');
+        Schema::table('customer', function (Blueprint $table) {
+            $table->dropColumn('customer_code');
+        });
     }
 };

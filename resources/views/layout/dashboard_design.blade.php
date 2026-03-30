@@ -549,7 +549,221 @@ padding: 20px;
     border-color: #cbd5e1;
 }
 
+/*Diseño de configuracion por dos pasos*/
+.security-section{
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.security-section h3{
+    margin: 0 0 10px;
+    color: #0f172a;
+}
+
+.security-block{
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    padding: 24px;
+    margin-top: 24px;
+}
+
+.security-block-header{
+    margin-bottom: 20px;
+}
+
+.security-block-header h3{
+    margin: 0 0 6px;
+    color: #0f172a;
+    font-size: 28px;
+}
+
+
+.security-block-header p{
+    margin: 0;
+    color: #64748b;
+    font-size: 16px;
+}
+
+.security-info-box{
+    margin: 18px 0 18px;
+    padding: 16px;
+    border-radius: 14px;
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+    color: #1d4ed8;
+    font-size: 15px;
+}
+
+.twofa-header{
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.twofa-header-icon{
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: #eef2ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+}
+
+.twofa-status-box{
+    margin-top: 16px;
+    padding: 18px 20px;
+    border-radius: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.twofa-status-box strong{
+    display: block;
+    margin-bottom: 6px;
+    font-size: 24px;
+}
+
+
+.twofa-status-box p{
+    margin: 0;
+    color: #7c5a2f;
+}
+
+.twofa-status-off{
+    background: #fff7ed;
+    border: 1px solid #fdba74;
+}
+
+.twofa-status-on{
+    background: #ecfeff;
+    border: 1px solid #67e8f9;
+}
+
+.twofa-qr-box{
+    margin: 22px;
+    padding: 22px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.twofa-confirm-form{
+    margin-top: 20px;
+}
+
+.twofa-confirmed-badge{
+    margin-top: 20px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: #dcfce7;
+    color: #166534;
+    font-weight: 600;
+}
+
+.recovery-section{
+    margin-top: 24px;
+}
+
+.recovery-section h4{
+    margin: 0 0 14px;
+    font-size: 22px;
+    color: #0f172a;
+}
+
+.recovery-section p{
+    margin: 0 0 14px;
+    color: #64748b;
+}
+
+.recovery-codes-box{
+    padding: 18px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    font-family: monospace;
+    font-size: 14px;
+}
+
+.btn-danger{
+    height: 48px;
+    padding: 0 24px;
+    border: none;
+    border-radius: 12px;
+    background: #dc2626;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-danger:hover{
+    background: #b91c1c;
+}
+
 /*Diseño de la ventana de clientes.*/
+.action-dropdown{
+    position: relative;
+    display: inline-block;
+}
+
+.action-btn{
+    background: #2d4bbb;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.action-menu{
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 44px;
+    min-width: 180px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+    z-index: 100;
+    overflow: hidden;
+}
+
+.action-menu a,
+.action-menu button{
+    display:block;
+    width: 100%;
+    padding: 12px 14px;
+    text-align: left;
+    background: white;
+    border: none;
+    text-decoration: none;
+    color: #0f172a;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.action-menu a:hover,
+.action-menu button:hover{
+    background: #f8fafc:
+}
+
+.delete-action{
+    color: #dc2626 !important;
+}
+
 .customers-header{
     display: flex;
     justify-content: space-between;

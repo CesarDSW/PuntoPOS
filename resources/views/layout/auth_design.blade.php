@@ -122,7 +122,28 @@
             background: #dcfce7;
             color= #166534;
             font-size: 14px;
-        }        
+        }
+        
+        /*Google*/
+        .google-button{
+            display: block;
+            width: 100%;
+            margin-top: 14px;
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 12px;
+            text-align: center;
+            text-decoration: none;
+            color: #0f172a;
+            font-weight: 600;
+            background: white;
+            transition: 0.2s ease;
+        }
+
+        .google-button:hover{
+            background: #f8fafc;
+        }
+
     </style>
 
 </head>

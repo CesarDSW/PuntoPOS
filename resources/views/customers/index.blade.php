@@ -8,7 +8,7 @@
                 <p>Administra la base de clientes para tu negocio.</p>
             </div>    
 
-            <button type="button" class="btn-primary" onClick="openCustomerModal()"> 
+            <button type="button" class="btn-primary" onclick="openCustomerModal()"> 
                 + Nuevo Cliente
             </button>
         </div>
@@ -33,27 +33,49 @@
             <table id="customerTable" class="display">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Cliente</th>
+                        <th>ID Cliente</th>
+                        <th>Nombre</th>
                         <th>Telefono</th>
                         <th>Email</th>
                         <th>Total Gastado</th>
                         <th>Compras</th>
                         <th>Última Compra</th>
-                        <th>Etiquetas</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($customers as $customer)
                         <tr>
-                            <td>{{ $customer->customer_id }}</td>
+                            <td>{{ $customer->customer_code ?? ('CL-' . str_pad($customer->customer_id, 3, '0', STR_PAD_LEFT)) }}</td>
                             <td>{{ $customer->name_customer }}</td>
                             <td>{{ $customer->phone }}</td>
-                            <td>{{ $customer->email }}</td>                       
+                            <td>{{ $customer->email }}</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>
+                                <div class="action-dropdown">
+                                    <button type="button" class="action-btn" onclick="toggleActions({{ $customer->customer_id }})">
+                                        Acciones
+                                    </button>
+
+                                    <div class="action-menu" id="actions-{{ $customer->customer_id }}">
+                                        <a href="{{ route('customers.edit', $customer->customer_id) }}">Editar cliente</a>
+                                        <a href="{{ route('customers.history', $customer->customer_id) }}">Ver historial</a>
+
+                                        <form method="POST" action="{{ route('customers.delete', $customer->customer_id) }}" onsubmit="return confirm('¿Seguro que deseas eliminar este cliente?')">
+                                            @csrf
+                                            @method('DELETE')
+
+                                            <button type="submit" class="delete-action">Eliminar cliente</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </td>                   
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4">No hay clientes registrados.</td>
+                            <td colspan="8">No hay clientes registrados.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -63,9 +85,11 @@
 
     <div class="modal-overlay" id="customerModal">
         <div class="modal-box">
-            <h2>Nuevo cliente</h2>
-            <button type="button" class="modal-close" onclick="closeUserModal()">X</button>
-
+            <div class="modal-header">
+                <h2>Nuevo cliente</h2>
+                <button type="button" class="modal-close" onclick="closeUserModal()">X</button>
+            </div>
+    
             <div class="modal-body">
                 <form method="POST" action="{{ route('customers.store') }}">
                     @csrf
@@ -87,25 +111,8 @@
                         </div>
                     </div>
                 
-                    <div class="form-group">
-                        <label>Etiquetas</label>
-                        <div class="tags-grid">
-                            @foreach($tags as $tag)
-                            <label class="tag-option">
-                                <input type="checkbox" name="tags[]" value="{{ $tag->tag_id }}">
-                                <span>{{ $tag->name_tag }}</span>
-                            </label>
-                            @endforeach
-                        </div>
-                    </div>
-
-                    <div class="token-button">
-                        <h4>¿Tienes un codigo de cliente?</h4>
-                        <input type="text" name="token_customer" class="form-input">
-                    </div>
-                                
                     <div class="modal-footer">
-                        <button type="button" class="btn-secondary" onClick="closeCustomerModal()">Cancelar</button>
+                        <button type="button" class="btn-secondary" onclick="closeCustomerModal()">Cancelar</button>
                         <button type="submit" class="btn-primary">Guardar cliente</button>                
                     </div>
                 </form>
@@ -118,9 +125,31 @@
         function openCustomerModal(){
             document.getElementById('customerModal').style.display = 'flex';
         }
+
         function closeCustomerModal(){
             document.getElementById('customerModal').style.display = 'none';
         }
+
+        function toggleActions(customerId){
+            const currentId = 'actions-' + (customerId);
+            const menu = document.getElementById(currentId);
+            
+            document.querySelectorAll('.action-menu').forEach(item => {
+                if(item.id !== currentId){
+                    item.style.display = 'none';
+                }
+            });
+
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block'
+        }
+
+        document.addEventListener('click', function(event){
+            if(!event.target.closest('.action-dropdown')){
+                document.querySelectorAll('.action-menu').forEach(item =>{
+                    item.style.display = 'none';
+                });
+            }
+        });
 
         @if($errors->any())
             document.addEventListener('DOMContentLoaded', function(){
