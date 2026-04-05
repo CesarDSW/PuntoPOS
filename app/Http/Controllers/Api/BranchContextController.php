@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -13,15 +13,15 @@ class BranchContextController extends Controller
     {
         $user = Auth::user();
 
-        if(!$user){
+        if (!$user) {
             throw ValidationException::withMessages([
                 'auth' => ['Usuario no autenticado.'],
             ]);
         }
 
-        if(!$user->company_idfk){
+        if (!$user->company_idfk) {
             throw ValidationException::withMessages([
-                'company' => ['El usuario autenticado no tiene una empresa asignada.']
+                'company' => ['El usuario autenticado no tiene una empresa asignada.'],
             ]);
         }
 

@@ -3,50 +3,64 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Facades\Route;
-
 use App\Models\User;
+
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\CustomerController;
+///daniel
+use App\Http\Controllers\Api\BranchContextController;
+use App\Http\Controllers\Api\Inventory\InventoryController;
+use App\Http\Controllers\Api\Inventory\InventoryAdjustmentController;
+use App\Http\Controllers\Api\Catalogo\CatalogController;
+use App\Http\Controllers\Api\Catalogo\ProductController;
+use App\Http\Controllers\Api\Catalogo\ServiceController;
+use App\Http\Controllers\Api\Catalogo\CategoryController;
+use App\Http\Controllers\Api\Catalogo\CatalogBulkUploadController;
+use App\Http\Controllers\Api\Ventas\SalesController;
+use App\Http\Controllers\Api\Ventas\PosController;
+use App\Http\Controllers\Api\Ventas\CashRegisterController;
+use App\Http\Controllers\Api\Ventas\ShiftController;
+use App\Http\Controllers\Api\Payments\PaymentController;
+use App\Http\Controllers\Api\Reports\ReportController;
 
-//Adrian
+// Adrian
 /*Autenticación*/
-//Rutas para el inicio de sesion y registro de usuario
+// Rutas para el inicio de sesion y registro de usuario
 Route::get('/', function () {
     return redirect()->route('login');
 });
 
-//Adrian
-//Rutas para el inicio de sesion
+// Adrian
+// Rutas para el inicio de sesion
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-//Route::post('/login', [AuthController::class, 'login']);
+// Route::post('/login', [AuthController::class, 'login']);
 
-//Adrian
-//Rutas para el registro de usuario
+// Adrian
+// Rutas para el registro de usuario
 Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
 Route::post('/register', [AuthController::class, 'register']);
 
-//Adrian
-//Ruta para cerrar sesion
+// Adrian
+// Ruta para cerrar sesion
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-//Adrian
+// Adrian
 /*Recuperar contraseña*/
-//Ruta para cambiar la contraseña si al usuario se le olvida
-    //Formulario para pedir el enlace
-Route::get('/forgot-password', function() {
+// Ruta para cambiar la contraseña si al usuario se le olvida
+// Formulario para pedir el enlace
+Route::get('/forgot-password', function () {
     return view('auth.forgot-password');
 })->middleware('guest')->name('password.request');
 
-//Adrian
-//Ruta para enviar un enlace por correo al usuario
-Route::post('/forgot-password', function(Request $request){
+// Adrian
+// Ruta para enviar un enlace por correo al usuario
+Route::post('/forgot-password', function (Request $request) {
     $request->validate([
         'email' => 'required|email',
     ]);
@@ -56,19 +70,19 @@ Route::post('/forgot-password', function(Request $request){
     );
 
     return $status === Password::RESET_LINK_SENT
-    ? back()->with(['status' => __($status)])
-    : back()->withErrors(['email' => __($status)]);
+        ? back()->with(['status' => __($status)])
+        : back()->withErrors(['email' => __($status)]);
 })->middleware('guest')->name('password.email');
 
-//Adrian
-//Ruta para redirigir al usuario al formulario para nueva contraseña
-Route::get('/reset-password/{token}', function(string $token){
+// Adrian
+// Ruta para redirigir al usuario al formulario para nueva contraseña
+Route::get('/reset-password/{token}', function (string $token) {
     return view('auth.reset-password', ['token' => $token]);
 })->middleware('guest')->name('password.reset');
 
-//Adrian
-//Ruta para guardar nueva contraseña
-Route::post('/reset-password', function(Request $request){
+// Adrian
+// Ruta para guardar nueva contraseña
+Route::post('/reset-password', function (Request $request) {
     $request->validate([
         'token' => 'required',
         'email' => 'required|email',
@@ -77,7 +91,7 @@ Route::post('/reset-password', function(Request $request){
 
     $status = Password::reset(
         $request->only('email', 'password', 'password_confirmation', 'token'),
-        function (User $user, string $password){
+        function (User $user, string $password) {
             $user->forceFill([
                 'password' => Hash::make($password),
             ]);
@@ -89,78 +103,197 @@ Route::post('/reset-password', function(Request $request){
     );
 
     return $status === Password::PASSWORD_RESET
-    ? redirect()->route('login')->with('status', __($status))
-    : back()->withErrors(['email' => [__($status)]]);
+        ? redirect()->route('login')->with('status', __($status))
+        : back()->withErrors(['email' => [__($status)]]);
 })->middleware('guest')->name('password.update');
 
-//Adrian
+// Adrian
 /*Google*/
-//Rutas para registrar la cuenta con cuenta de google
-Route::get('/auth/google/redirect', [GoogleController::class, 'redirectToGoogle'])
-->middleware('guest')
-->name('google.redirect');
+// Rutas para registrar la cuenta con cuenta de google
+Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirectToGoogle'])
+    ->middleware('guest')
+    ->name('google.redirect');
 
-Route::get('/auth/google/callback', [GoogleController::class, 'handleGoogleCallBack'])
-->middleware('guest')
-->name('google.callback');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallBack'])
+    ->middleware('guest')
+    ->name('google.callback');
 
-//prueba de google
-Route::get('/auth/google/test', [GoogleController::class, 'fakeGoogleLogin'])
-->middleware('guest')
-->name('google.test');
+// Prueba de google
+Route::get('/auth/google/test', [GoogleAuthController::class, 'fakeGoogleLogin'])
+    ->middleware('guest')
+    ->name('google.test');
 
-//Adrian
-//Rutas protegidas
-Route::middleware('auth')->group(function (){
+// Adrian
+// Rutas protegidas
+Route::middleware('auth')->group(function () {
 
-    //Adrian
+    // Adrian
     /*Dashboard*/
-    //Ruta para el dashboard, solo accesible para usuarios autenticados
+    // Ruta para el dashboard, solo accesible para usuarios autenticados
     Route::get('/dashboard', [DashboardController::class, 'showDashboard'])->name('dashboard');
 
-    //Adrian
-    //Ruta para mandar a llamar el onboarding (ventana para registrar datos) en el dashboard
+    // Adrian
+    // Ruta para mandar a llamar el onboarding (ventana para registrar datos) en el dashboard
     Route::post('/onboarding', [DashboardController::class, 'storeOnboarding'])->name('onboarding.store');
 
-    //Adrian
+    // Adrian
     /*Configuracion*/
-    //Ruta para entrar en configuracion desde el dashboard
-    Route::get('/configuracion',[SettingsController::class, 'showSettings'])->name('settings');
+    // Ruta para entrar en configuracion desde el dashboard
+    Route::get('/configuracion', [SettingsController::class, 'showSettings'])->name('settings');
 
-    //Adrian
-    //Ruta para que en configuracion se puedan editar o agregar datos
-    Route::post('/configuracion',[SettingsController::class, 'updateSettings'])->name('settings.update');
+    // Adrian
+    // Ruta para que en configuracion se puedan editar o agregar datos
+    Route::post('/configuracion', [SettingsController::class, 'updateSettings'])->name('settings.update');
 
-    //Adrian
-    //Ruta para configurar los usuarios accesibles al sistema
+    // Adrian
+    // Ruta para configurar los usuarios accesibles al sistema
     Route::post('/configuracion/usuarios', [SettingsController::class, 'createUser'])->name('users.store');
 
-    //Adrian
-    //Ruta para cambiar la contraseña del usuario
+    // Adrian
+    // Ruta para cambiar la contraseña del usuario
     Route::post('/password/update', [PasswordController::class, 'updatePassword'])->name('password.update');
 
-    //Adrian
+    // Adrian
     /*Clientes*/
-    //Ruta para entrar a la pagina de clientes desde el dashboard
+    // Ruta para entrar a la pagina de clientes desde el dashboard
     Route::get('/cliente', [CustomerController::class, 'showCustomers'])->name('customers');
 
-    //Adrian
-    //Ruta para crear nuevos clientes
+    // Adrian
+    // Ruta para crear nuevos clientes
     Route::post('/cliente', [CustomerController::class, 'storeCustomers'])->name('customers.store');
 
-    //Adrian
-    //Ruta para ver el historial del cliente
+    // Adrian
+    // Ruta para ver el historial del cliente
     Route::get('/cliente/{id}/historial', [CustomerController::class, 'showCustomerHistory'])->name('customers.history');
-    
-    //Adrian
-    //Ruta para editar los clientes
+
+    // Adrian
+    // Ruta para editar los clientes
     Route::get('/cliente/{id}/editar', [CustomerController::class, 'editCustomer'])->name('customers.edit');
 
-    //Adrian
-    //Ruta para actualizar el cliente una vez editado
+    // Adrian
+    // Ruta para actualizar el cliente una vez editado
     Route::put('/cliente/{id}', [CustomerController::class, 'updateCustomer'])->name('customers.update');
 
-    //Adrian
-    //Ruta para borrar el cliente de la tabla
+    // Adrian
+    // Ruta para borrar el cliente de la tabla
     Route::delete('/cliente/{id}', [CustomerController::class, 'deleteCustomer'])->name('customers.delete');
+
+    // Daniel.-------------------------------------------------------
+
+    // Vistas
+    Route::view('/ventas', 'sales.index')->name('sales.index');
+    Route::view('/ventas/pos', 'sales.pos')->name('sales.pos');
+
+    // Historial de cajas
+    Route::view('/ventas/cajas', 'sales.cash-history')->name('sales.cash.history');
+
+    Route::get('/ventas/cajas/{id}', function (int $id) {
+        return view('sales.cash-session-show', [
+            'cashSessionId' => $id,
+        ]);
+    })->whereNumber('id')->name('sales.cash.show');
+
+    // Detalle de venta
+    Route::get('/ventas/{id}', function (int $id) {
+        return view('sales.show', ['saleId' => $id]);
+    })->whereNumber('id')->name('sales.show');
+
+    Route::view('/catalogo', 'catalog.index')->name('catalog.index');
+    Route::view('/inventario', 'inventory.index')->name('inventory.index');
+    Route::view('/pagos', 'payments.index')->name('payments.index');
+
+    // Detalle de pago
+    Route::get('/pagos/{id}', function (int $id) {
+        return view('payments.show', ['paymentId' => $id]);
+    })->whereNumber('id')->name('payments.show');
+
+    Route::redirect('/clientes', '/cliente')->name('customers.index');
+    Route::view('/reportes', 'reports.index')->name('reports.index');
+
+    // APIs
+    Route::prefix('api')->group(function () {
+
+        // Contexto de sucursal
+        Route::get('/branches', [BranchContextController::class, 'index']);
+        Route::get('/branches/current', [BranchContextController::class, 'current']);
+        Route::post('/branches/current', [BranchContextController::class, 'update']);
+
+        // Inventario
+        Route::get('/inventory/summary', [InventoryController::class, 'summary']);
+        Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock']);
+        Route::get('/inventory', [InventoryController::class, 'index']);
+        Route::get('/inventory/products/{productId}', [InventoryController::class, 'show']);
+        Route::get('/inventory/reasons', [InventoryController::class, 'reasons']);
+
+        // Ajustes
+        Route::get('/inventory/adjustments', [InventoryAdjustmentController::class, 'index']);
+        Route::post('/inventory/adjustments', [InventoryAdjustmentController::class, 'store']);
+        Route::post('/inventory/adjustments/bulk', [InventoryAdjustmentController::class, 'bulkStore']);
+
+        // Catálogo
+        Route::get('/catalog/summary', [CatalogController::class, 'summary']);
+        Route::get('/catalog/items', [CatalogController::class, 'items']);
+
+        // Productos
+        Route::get('/products/{id}', [ProductController::class, 'show']);
+        Route::post('/products', [ProductController::class, 'store']);
+        Route::put('/products/{id}', [ProductController::class, 'update']);
+        Route::patch('/products/{id}/deactivate', [ProductController::class, 'deactivate']);
+        Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+
+        // Servicios
+        Route::get('/services/{id}', [ServiceController::class, 'show']);
+        Route::post('/services', [ServiceController::class, 'store']);
+        Route::put('/services/{id}', [ServiceController::class, 'update']);
+        Route::patch('/services/{id}/deactivate', [ServiceController::class, 'deactivate']);
+        Route::delete('/services/{id}', [ServiceController::class, 'destroy']);
+
+        // Categorías
+        Route::get('/categories', [CategoryController::class, 'index']);
+        Route::get('/categories/{id}', [CategoryController::class, 'show']);
+        Route::post('/categories', [CategoryController::class, 'store']);
+        Route::put('/categories/{id}', [CategoryController::class, 'update']);
+        Route::patch('/categories/{id}/deactivate', [CategoryController::class, 'deactivate']);
+        Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
+
+        // Carga masiva
+        Route::get('/catalog/bulk-upload/template', [CatalogBulkUploadController::class, 'template']);
+        Route::post('/catalog/bulk-upload', [CatalogBulkUploadController::class, 'upload']);
+
+        // Ventas
+        Route::get('/sales/summary', [SalesController::class, 'summary']);
+        Route::get('/sales', [SalesController::class, 'index']);
+        Route::get('/sales/{id}', [SalesController::class, 'show'])->whereNumber('id');
+        Route::post('/sales', [SalesController::class, 'store']);
+
+        // POS
+        Route::get('/sales/pos/status', [PosController::class, 'status']);
+        Route::get('/sales/pos/products', [PosController::class, 'products']);
+        Route::get('/sales/pos/customers', [PosController::class, 'customers']);
+
+        // Caja
+        Route::post('/sales/cash/open', [CashRegisterController::class, 'open']);
+        Route::post('/sales/cash/close', [CashRegisterController::class, 'close']);
+        Route::get('/sales/cash/history', [CashRegisterController::class, 'history']);
+        Route::get('/sales/cash/{id}', [CashRegisterController::class, 'show'])->whereNumber('id');
+
+        // Turno
+        Route::post('/sales/shifts/open', [ShiftController::class, 'open']);
+        Route::post('/sales/shifts/close', [ShiftController::class, 'close']);
+        Route::get('/sales/shifts/summary', [ShiftController::class, 'summary']);
+
+        // Pagos
+        Route::get('/payments/summary', [PaymentController::class, 'summary']);
+        Route::get('/payments', [PaymentController::class, 'index']);
+        Route::get('/payments/export', [PaymentController::class, 'export']);
+        Route::get('/payments/{id}', [PaymentController::class, 'show'])->whereNumber('id');
+
+        // Reportes
+        Route::get('/reports/summary', [ReportController::class, 'summary']);
+        Route::get('/reports/sales-vs-costs', [ReportController::class, 'salesVsCosts']);
+        Route::get('/reports/categories', [ReportController::class, 'categories']);
+        Route::get('/reports/peak-hours', [ReportController::class, 'peakHours']);
+        Route::get('/reports/top-products', [ReportController::class, 'topProducts']);
+        Route::get('/reports/payment-methods', [ReportController::class, 'paymentMethods']);
+    });
 });
