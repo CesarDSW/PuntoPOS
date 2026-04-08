@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -90,7 +91,7 @@ class BranchContextController extends Controller
         ]);
     }
 
-    public function update(\Illuminate\Http\Request $request)
+    public function update(Request $request)
     {
         $validated = $request->validate([
             'branch_id' => ['required', 'integer', 'exists:branch,branch_id'],
@@ -120,5 +121,43 @@ class BranchContextController extends Controller
                 'name_branch' => $branch->name_branch,
             ],
         ]);
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name_branch' => ['required', 'string', 'max:50'],
+            'address' => ['required', 'string', 'max:50'],
+            'city' => ['required', 'string', 'max:50'],
+            'state' => ['required', 'string', 'max:50'],
+            'phone' => ['nullable', 'string', 'max:10'],
+            'responsible' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:320'],
+        ]);
+
+        $user = $this->getAuthenticatedUser();
+        $companyId = (int) $user->company_idfk;
+
+        $branchId = DB::table('branch')->insertGetId([
+            'name_branch' => trim($validated['name_branch']),
+            'address' => trim($validated['address']),
+            'city' => trim($validated['city']),
+            'state' => trim($validated['state']),
+            'phone' => isset($validated['phone']) && trim($validated['phone']) !== '' ? trim($validated['phone']) : null,
+            'responsible' => isset($validated['responsible']) && trim($validated['responsible']) !== '' ? trim($validated['responsible']) : null,
+            'email' => isset($validated['email']) && trim($validated['email']) !== '' ? trim($validated['email']) : null,
+            'company_idfk' => $companyId,
+        ]);
+
+        $branch = DB::table('branch')
+            ->where('branch_id', $branchId)
+            ->first();
+
+        session(['current_branch_id' => (int) $branchId]);
+
+        return response()->json([
+            'message' => 'Sucursal creada correctamente.',
+            'branch' => $branch,
+        ], 201);
     }
 }

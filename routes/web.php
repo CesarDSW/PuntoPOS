@@ -170,6 +170,9 @@ Route::middleware('auth')->group(function () {
     // Ruta para editar los clientes
     Route::get('/cliente/{id}/editar', [CustomerController::class, 'editCustomer'])->name('customers.edit');
 
+    // Nueva ruta para ver el detalle de una venta dentro del apartado de clientes 
+    Route::get('/cliente/{customerId}/venta/{saleId}', [CustomerController::class, 'showCustomerSaleDetail'])->name('customers.sales.show'); 
+
     // Adrian
     // Ruta para actualizar el cliente una vez editado
     Route::put('/cliente/{id}', [CustomerController::class, 'updateCustomer'])->name('customers.update');
@@ -215,6 +218,7 @@ Route::middleware('auth')->group(function () {
 
         // Contexto de sucursal
         Route::get('/branches', [BranchContextController::class, 'index']);
+        Route::post('/branches', [BranchContextController::class, 'store']); 
         Route::get('/branches/current', [BranchContextController::class, 'current']);
         Route::post('/branches/current', [BranchContextController::class, 'update']);
 

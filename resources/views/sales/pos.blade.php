@@ -1180,7 +1180,62 @@
         </div>
     </div>
 </div>
+<div class="overlay" id="closeCashOverlay">
+    <div class="modal">
+        <div class="modal-head">
+            <div>
+                <div style="font-size:28px; font-weight:700;">Cierre de caja</div>
+                <div style="color:#64748b; margin-top:6px;">
+                    Ingresa el monto final registrado al terminar operaciones
+                </div>
+            </div>
+            <button class="btn" type="button" onclick="closeCashModal()">Cerrar</button>
+        </div>
 
+        <div class="modal-body">
+            <div class="info-card">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span>Usuario</span>
+                    <strong id="closeCashUserName">-</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span>Sucursal</span>
+                    <strong id="closeCashBranchName">-</strong>
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label">Monto final de caja</label>
+                <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    id="closeCashAmount"
+                    class="input"
+                    placeholder="0.00"
+                >
+            </div>
+
+            <div class="field">
+                <label class="label">Observaciones (opcional)</label>
+                <textarea
+                    id="closeCashNotes"
+                    class="textarea"
+                    placeholder="Ej: sobrante, faltante, corte revisado..."
+                ></textarea>
+            </div>
+
+            <div class="error-box" id="closeCashErrorBox"></div>
+        </div>
+
+        <div class="modal-foot">
+            <button class="btn" type="button" onclick="closeCashModal()">Cancelar</button>
+            <button class="btn btn-primary" type="button" onclick="confirmCloseCash()">
+                Confirmar cierre
+            </button>
+        </div>
+    </div>
+</div>
 <script>
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     let cart = [];
@@ -1704,34 +1759,62 @@
         document.getElementById('shiftClosedSuccessOverlay').classList.add('show');
     }
 
-    async function closeCash() {
-        const closingAmount = prompt('Ingresa el monto final de caja:');
-        if (closingAmount === null) return;
+    function closeCash() {
+    hideError('closeCashErrorBox');
 
-        const { response, data } = await apiFetch('/api/sales/cash/close', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
-            },
-            body: JSON.stringify({
-                closing_amount: closingAmount,
-                notes_closing: ''
-            })
-        });
+    document.getElementById('closeCashUserName').textContent =
+        document.getElementById('posUserName').textContent.trim() || 'Usuario';
 
-        if (!response.ok) {
-            alert(
-                data.errors?.shift?.[0] ||
-                data.errors?.closing_amount?.[0] ||
-                data.message ||
-                'No se pudo cerrar la caja.'
-            );
-            return;
-        }
+    document.getElementById('closeCashBranchName').textContent =
+        document.getElementById('posBranchName').textContent.trim() || 'Sucursal actual';
 
-        window.location.href = data.redirect_url || ('/ventas/cajas/' + data.cash_session_id);
+    document.getElementById('closeCashAmount').value = '';
+    document.getElementById('closeCashNotes').value = '';
+
+    document.getElementById('closeCashOverlay').classList.add('show');
+}
+
+function closeCashModal() {
+    document.getElementById('closeCashOverlay').classList.remove('show');
+}
+
+async function confirmCloseCash() {
+    hideError('closeCashErrorBox');
+
+    const closingAmount = document.getElementById('closeCashAmount').value.trim();
+    const notesClosing = document.getElementById('closeCashNotes').value.trim();
+
+    if (closingAmount === '' || Number(closingAmount) < 0) {
+        showError('closeCashErrorBox', 'Ingresa un monto final válido.');
+        return;
     }
+
+    const { response, data } = await apiFetch('/api/sales/cash/close', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+        },
+        body: JSON.stringify({
+            closing_amount: closingAmount,
+            notes_closing: notesClosing
+        })
+    });
+
+    if (!response.ok) {
+        showError(
+            'closeCashErrorBox',
+            data.errors?.shift?.[0] ||
+            data.errors?.closing_amount?.[0] ||
+            data.message ||
+            'No se pudo cerrar la caja.'
+        );
+        return;
+    }
+
+    closeCashModal();
+    window.location.href = data.redirect_url || ('/ventas/cajas/' + data.cash_session_id);
+}
 
     function openPaymentModal() {
         if (!cart.length) return;
@@ -1918,6 +2001,13 @@
                 hideCustomerResults();
             }
         });
+        const closeCashOverlay = document.getElementById('closeCashOverlay');
+
+closeCashOverlay.addEventListener('click', function (e) {
+    if (e.target === closeCashOverlay) {
+        closeCashModal();
+    }
+});
     });
 </script>
 </body>
