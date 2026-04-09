@@ -59,8 +59,8 @@ class GoogleAuthController extends Controller
         }
     }
 
+
     //prueba
-    
     public function fakeGoogleLogin(){
         $googleUser = [
             'google_id' => 'google_test_12345',
@@ -81,10 +81,10 @@ class GoogleAuthController extends Controller
 
                 return redirect()->route('dashboard');
         }
-                //Si no existe, guardar datos temporales para precargar registro
-                Session::put('google_user', $googleUser);
-
-                return redirect()->route('register')->with('info', 'Completa tu registro para continuar.');
+        
+        //Si no existe, guardar datos temporales para precargar registro
+        Session::put('google_user', $googleUser);
+        return redirect()->route('register')->with('info', 'Completa tu registro para continuar.');
     }
     
 }

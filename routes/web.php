@@ -13,6 +13,7 @@ use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\CustomerController;
+
 ///daniel
 use App\Http\Controllers\Api\BranchContextController;
 use App\Http\Controllers\Api\Inventory\InventoryController;
@@ -30,163 +31,146 @@ use App\Http\Controllers\Api\Payments\PaymentController;
 use App\Http\Controllers\Api\Reports\ReportController;
 
 // Adrian
-/*Autenticación*/
 // Rutas para el inicio de sesion y registro de usuario
 Route::get('/', function () {
     return redirect()->route('login');
 });
 
-// Adrian
-// Rutas para el inicio de sesion
-Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-// Route::post('/login', [AuthController::class, 'login']);
+/*
+|-----------------------------------------------------------------------
+| Rutas de invitado
+|-----------------------------------------------------------------------
+*/
+Route::middleware('guest')->group(function(){
+    // Inicio de sesion
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    // Route::post('/login', [AuthController::class, 'login']);
 
-// Adrian
-// Rutas para el registro de usuario
-Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-Route::post('/register', [AuthController::class, 'register']);
+    // Registro
+    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [AuthController::class, 'register']);
 
-// Adrian
-// Ruta para cerrar sesion
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+        // Recuperacion de contraseña
+    Route::get('/forgot-password', function () {
+        return view('auth.forgot-password');
+    
+    })->name('password.request');
+        
+        // Ruta para enviar un enlace por correo al usuario
+    Route::post('/forgot-password', function (Request $request) {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+        
+        $status = Password::sendResetLink(
+            $request->only('email')
+        );
 
-// Adrian
-/*Recuperar contraseña*/
-// Ruta para cambiar la contraseña si al usuario se le olvida
-// Formulario para pedir el enlace
-Route::get('/forgot-password', function () {
-    return view('auth.forgot-password');
-})->middleware('guest')->name('password.request');
+        return $status === Password::RESET_LINK_SENT
+            ? back()->with(['status' => __($status)])
+            : back()->withErrors(['email' => __($status)]);
+    })->name('password.email');
+        
+        // Ruta para redirigir al usuario al formulario para nueva contraseña
+    Route::get('/reset-password/{token}', function (string $token) {
+        return view('auth.reset-password', ['token' => $token]);
+    })->name('password.reset');
 
-// Adrian
-// Ruta para enviar un enlace por correo al usuario
-Route::post('/forgot-password', function (Request $request) {
-    $request->validate([
-        'email' => 'required|email',
-    ]);
+        // Ruta para guardar nueva contraseña
+    Route::post('/reset-password', function (Request $request) {
+        $request->validate([
+            'token' => 'required',
+            'email' => 'required|email',
+            'password' => 'required|min:8|confirmed',
+        ]);
 
-    $status = Password::sendResetLink(
-        $request->only('email')
-    );
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                ]);
 
-    return $status === Password::RESET_LINK_SENT
-        ? back()->with(['status' => __($status)])
-        : back()->withErrors(['email' => __($status)]);
-})->middleware('guest')->name('password.email');
+                $user->save();
 
-// Adrian
-// Ruta para redirigir al usuario al formulario para nueva contraseña
-Route::get('/reset-password/{token}', function (string $token) {
-    return view('auth.reset-password', ['token' => $token]);
-})->middleware('guest')->name('password.reset');
+                event(new PasswordReset($user));
+            }
+        );
 
-// Adrian
-// Ruta para guardar nueva contraseña
-Route::post('/reset-password', function (Request $request) {
-    $request->validate([
-        'token' => 'required',
-        'email' => 'required|email',
-        'password' => 'required|min:8|confirmed',
-    ]);
+        return $status === Password::PASSWORD_RESET
+            ? redirect()->route('login')->with('status', __($status))
+            : back()->withErrors(['email' => [__($status)]]);
+    })->name('password.update');
 
-    $status = Password::reset(
-        $request->only('email', 'password', 'password_confirmation', 'token'),
-        function (User $user, string $password) {
-            $user->forceFill([
-                'password' => Hash::make($password),
-            ]);
+    //Google
+        // Rutas para registrar la cuenta con cuenta de google
+    Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirectToGoogle'])
+        ->name('google.redirect');
 
-            $user->save();
+    Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallBack'])
+        ->name('google.callback');
 
-            event(new PasswordReset($user));
-        }
-    );
+        // Prueba de google
+    Route::get('/auth/google/test', [GoogleAuthController::class, 'fakeGoogleLogin'])
+        ->name('google.test');
+});
 
-    return $status === Password::PASSWORD_RESET
-        ? redirect()->route('login')->with('status', __($status))
-        : back()->withErrors(['email' => [__($status)]]);
-})->middleware('guest')->name('password.update');
-
-// Adrian
-/*Google*/
-// Rutas para registrar la cuenta con cuenta de google
-Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirectToGoogle'])
-    ->middleware('guest')
-    ->name('google.redirect');
-
-Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallBack'])
-    ->middleware('guest')
-    ->name('google.callback');
-
-// Prueba de google
-Route::get('/auth/google/test', [GoogleAuthController::class, 'fakeGoogleLogin'])
-    ->middleware('guest')
-    ->name('google.test');
-
-// Adrian
-// Rutas protegidas
+/*
+|-----------------------------------------------------------------------
+| Rutas protegidas
+|-----------------------------------------------------------------------
+*/
 Route::middleware('auth')->group(function () {
+    //Cerrar sesion
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    // Adrian
-    /*Dashboard*/
-    // Ruta para el dashboard, solo accesible para usuarios autenticados
+    //Dashboard
+        // Ruta para el dashboard, solo accesible para usuarios autenticados
     Route::get('/dashboard', [DashboardController::class, 'showDashboard'])->name('dashboard');
-
-    // Adrian
-    // Ruta para mandar a llamar el onboarding (ventana para registrar datos) en el dashboard
+        // Ruta para mandar a llamar el onboarding (ventana para registrar datos) en el dashboard
     Route::post('/onboarding', [DashboardController::class, 'storeOnboarding'])->name('onboarding.store');
 
-    // Adrian
-    /*Configuracion*/
-    // Ruta para entrar en configuracion desde el dashboard
+    //Configuracion
+        // Ruta para entrar en configuracion desde el dashboard
     Route::get('/configuracion', [SettingsController::class, 'showSettings'])->name('settings');
-
-    // Adrian
-    // Ruta para que en configuracion se puedan editar o agregar datos
+        // Ruta para que en configuracion se puedan editar o agregar datos
     Route::post('/configuracion', [SettingsController::class, 'updateSettings'])->name('settings.update');
-
-    // Adrian
-    // Ruta para configurar los usuarios accesibles al sistema
+        // Ruta para configurar los usuarios accesibles al sistema
     Route::post('/configuracion/usuarios', [SettingsController::class, 'createUser'])->name('users.store');
+        //Rutas para modificar o borrar usuarios
+    Route::put('/configuracion/usuarios/{id}', [SettingsController::class, 'updateUser'])->name('users.update');
+    Route::get('/configuracion/usuarios/{id}/editar', [SettingsController::class, 'editUser'])->name('users.edit');
+    Route::delete('/configuracion/usuarios/{id}', [SettingsController::class, 'deleteUser'])->name('users.delete');
+        //Ruta para las notificaciones 
+    Route::post('/configuracion/notificaciones', [SettingsController::class, 'updateNotifications'])->name('settings.notifications.update');
+        //Rutas para configurar las preferencias
+    Route::post('/configuracion/preferencias', [SettingsController::class, 'updatePreferences'])->name('settings.preferences.update');
+    Route::post('/configuracion/preferencias/reset', [SettingsController::class, 'resetPreferences'])->name('settings.preferences.reset');
+        // Ruta para cambiar la contraseña del usuario
+    Route::post('/password/update', [PasswordController::class, 'updatePassword'])->name('settings.password.update');
 
-    // Adrian
-    // Ruta para cambiar la contraseña del usuario
-    Route::post('/password/update', [PasswordController::class, 'updatePassword'])->name('password.update');
-
-    // Adrian
-    /*Clientes*/
-    // Ruta para entrar a la pagina de clientes desde el dashboard
+    //Clientes
+        // Ruta para entrar a la pagina de clientes desde el dashboard
     Route::get('/cliente', [CustomerController::class, 'showCustomers'])->name('customers');
-
-    // Adrian
-    // Ruta para crear nuevos clientes
+        // Ruta para crear nuevos clientes
     Route::post('/cliente', [CustomerController::class, 'storeCustomers'])->name('customers.store');
-
-    // Adrian
-    // Ruta para ver el historial del cliente
+        // Ruta para ver el historial del cliente
     Route::get('/cliente/{id}/historial', [CustomerController::class, 'showCustomerHistory'])->name('customers.history');
-
-    // Adrian
-    // Ruta para editar los clientes
+        // Ruta para editar los clientes
     Route::get('/cliente/{id}/editar', [CustomerController::class, 'editCustomer'])->name('customers.edit');
-
-    // Adrian
-    // Ruta para actualizar el cliente una vez editado
+        // Ruta para actualizar el cliente una vez editado
     Route::put('/cliente/{id}', [CustomerController::class, 'updateCustomer'])->name('customers.update');
-
-    // Adrian
-    // Ruta para borrar el cliente de la tabla
+        // Ruta para borrar el cliente de la tabla
     Route::delete('/cliente/{id}', [CustomerController::class, 'deleteCustomer'])->name('customers.delete');
+    Route::redirect('/clientes', '/cliente')->name('customers.index');
 
-    // Daniel.-------------------------------------------------------
-
-    // Vistas
+    /*Daniel*/
+    // Vistas del modulo POS
     Route::view('/ventas', 'sales.index')->name('sales.index');
     Route::view('/ventas/pos', 'sales.pos')->name('sales.pos');
-
+    
     // Historial de cajas
     Route::view('/ventas/cajas', 'sales.cash-history')->name('sales.cash.history');
-
     Route::get('/ventas/cajas/{id}', function (int $id) {
         return view('sales.cash-session-show', [
             'cashSessionId' => $id,
@@ -201,18 +185,15 @@ Route::middleware('auth')->group(function () {
     Route::view('/catalogo', 'catalog.index')->name('catalog.index');
     Route::view('/inventario', 'inventory.index')->name('inventory.index');
     Route::view('/pagos', 'payments.index')->name('payments.index');
-
+    
     // Detalle de pago
     Route::get('/pagos/{id}', function (int $id) {
         return view('payments.show', ['paymentId' => $id]);
     })->whereNumber('id')->name('payments.show');
-
-    Route::redirect('/clientes', '/cliente')->name('customers.index');
     Route::view('/reportes', 'reports.index')->name('reports.index');
 
-    // APIs
+    // APIs internas protegidas
     Route::prefix('api')->group(function () {
-
         // Contexto de sucursal
         Route::get('/branches', [BranchContextController::class, 'index']);
         Route::get('/branches/current', [BranchContextController::class, 'current']);
@@ -225,7 +206,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/inventory/products/{productId}', [InventoryController::class, 'show']);
         Route::get('/inventory/reasons', [InventoryController::class, 'reasons']);
 
-        // Ajustes
+        // Ajustes de inventario
         Route::get('/inventory/adjustments', [InventoryAdjustmentController::class, 'index']);
         Route::post('/inventory/adjustments', [InventoryAdjustmentController::class, 'store']);
         Route::post('/inventory/adjustments/bulk', [InventoryAdjustmentController::class, 'bulkStore']);
@@ -277,7 +258,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/sales/cash/history', [CashRegisterController::class, 'history']);
         Route::get('/sales/cash/{id}', [CashRegisterController::class, 'show'])->whereNumber('id');
 
-        // Turno
+        // Turnos
         Route::post('/sales/shifts/open', [ShiftController::class, 'open']);
         Route::post('/sales/shifts/close', [ShiftController::class, 'close']);
         Route::get('/sales/shifts/summary', [ShiftController::class, 'summary']);
