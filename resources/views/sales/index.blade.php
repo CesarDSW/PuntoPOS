@@ -90,6 +90,94 @@
         color:#64748b;
     }
 
+    .overlay {
+        position:fixed;
+        inset:0;
+        background:rgba(15,23,42,.45);
+        display:none;
+        align-items:center;
+        justify-content:center;
+        padding:20px;
+        z-index:1000;
+    }
+
+    .overlay.show {
+        display:flex;
+    }
+
+    .modal {
+        width:100%;
+        max-width:460px;
+        background:#fff;
+        border:1px solid #e5e7eb;
+        border-radius:18px;
+        overflow:hidden;
+        box-shadow:0 18px 50px rgba(15,23,42,.18);
+    }
+
+    .modal-head {
+        padding:20px;
+        border-bottom:1px solid #e5e7eb;
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:12px;
+    }
+
+    .modal-body {
+        padding:20px;
+        display:flex;
+        flex-direction:column;
+        gap:14px;
+    }
+
+    .modal-foot {
+        padding:20px;
+        border-top:1px solid #e5e7eb;
+        display:flex;
+        justify-content:flex-end;
+        gap:10px;
+    }
+
+    .field {
+        display:flex;
+        flex-direction:column;
+        gap:8px;
+    }
+
+    .label {
+        font-size:14px;
+        font-weight:600;
+    }
+
+    .textarea {
+        width:100%;
+        border:1px solid #d1d5db;
+        border-radius:12px;
+        padding:12px 14px;
+        background:#fff;
+        font-size:14px;
+        min-height:90px;
+        resize:vertical;
+    }
+
+    .error-box {
+        display:none;
+        background:#fee2e2;
+        color:#991b1b;
+        border:1px solid #fecaca;
+        border-radius:12px;
+        padding:12px;
+        font-size:14px;
+    }
+
+    .info-card {
+        background:#f8fafc;
+        border:1px solid #e5e7eb;
+        border-radius:14px;
+        padding:14px;
+    }
+
     @media (max-width: 1100px) {
         .summary-grid { grid-template-columns:1fr; }
         .filters-card { grid-template-columns:1fr; }
@@ -172,6 +260,59 @@
     </div>
 </div>
 
+<div class="overlay" id="closePosOverlay">
+    <div class="modal">
+        <div class="modal-head">
+            <div>
+                <div style="font-size:24px; font-weight:700;">Cerrar POS</div>
+                <div style="color:#64748b; margin-top:6px;">Ingresa el monto final de caja para cerrar el punto de venta</div>
+            </div>
+            <button type="button" class="btn" onclick="closeClosePosModal()">Cerrar</button>
+        </div>
+
+        <div class="modal-body">
+            <div class="info-card">
+                <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:8px;">
+                    <span style="color:#64748b;">Acción</span>
+                    <strong>Cierre de caja / POS</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; gap:12px;">
+                    <span style="color:#64748b;">Estado</span>
+                    <strong>Listo para cerrar</strong>
+                </div>
+            </div>
+
+            <div class="field">
+                <label for="closePosAmount" class="label">Monto final de caja</label>
+                <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    id="closePosAmount"
+                    class="input"
+                    placeholder="0.00"
+                >
+            </div>
+
+            <div class="field">
+                <label for="closePosNotes" class="label">Observaciones (opcional)</label>
+                <textarea
+                    id="closePosNotes"
+                    class="textarea"
+                    placeholder="Ej: sobrante, faltante, corte revisado..."
+                ></textarea>
+            </div>
+
+            <div class="error-box" id="closePosErrorBox"></div>
+        </div>
+
+        <div class="modal-foot">
+            <button type="button" class="btn" onclick="closeClosePosModal()">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="confirmClosePosButton" onclick="confirmClosePos()">Confirmar cierre</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const salesPosUrl = @json(route('sales.pos'));
 
@@ -181,6 +322,18 @@
             currency: 'MXN',
             maximumFractionDigits: 2
         }).format(Number(value || 0));
+    }
+
+    function showError(id, message) {
+        const box = document.getElementById(id);
+        box.textContent = message;
+        box.style.display = 'block';
+    }
+
+    function hideError(id) {
+        const box = document.getElementById(id);
+        box.textContent = '';
+        box.style.display = 'none';
     }
 
     async function apiFetch(url, options = {}) {
@@ -227,7 +380,7 @@
         btn.textContent = 'Cerrar POS';
         btn.classList.remove('btn-dark');
         btn.classList.add('btn-primary');
-        btn.onclick = closePosFromIndex;
+        btn.onclick = openClosePosModal;
     }
 
     async function loadPosButtonState() {
@@ -241,9 +394,35 @@
         configurePosButtonAsClose();
     }
 
-    async function closePosFromIndex() {
-        const closingAmount = prompt('Ingresa el monto final de caja:');
-        if (closingAmount === null) return;
+    function openClosePosModal() {
+        hideError('closePosErrorBox');
+        document.getElementById('closePosAmount').value = '';
+        document.getElementById('closePosNotes').value = '';
+        document.getElementById('closePosOverlay').classList.add('show');
+
+        setTimeout(() => {
+            document.getElementById('closePosAmount').focus();
+        }, 50);
+    }
+
+    function closeClosePosModal() {
+        document.getElementById('closePosOverlay').classList.remove('show');
+    }
+
+    async function confirmClosePos() {
+        hideError('closePosErrorBox');
+
+        const closingAmount = document.getElementById('closePosAmount').value.trim();
+        const notesClosing = document.getElementById('closePosNotes').value.trim();
+        const button = document.getElementById('confirmClosePosButton');
+
+        if (closingAmount === '' || Number(closingAmount) < 0) {
+            showError('closePosErrorBox', 'Ingresa un monto final válido.');
+            return;
+        }
+
+        button.disabled = true;
+        button.textContent = 'Cerrando...';
 
         const { response, data } = await apiFetch('/api/sales/cash/close', {
             method: 'POST',
@@ -253,12 +432,16 @@
             },
             body: JSON.stringify({
                 closing_amount: closingAmount,
-                notes_closing: ''
+                notes_closing: notesClosing
             })
         });
 
+        button.disabled = false;
+        button.textContent = 'Confirmar cierre';
+
         if (!response.ok) {
-            alert(
+            showError(
+                'closePosErrorBox',
                 data.errors?.shift?.[0] ||
                 data.errors?.closing_amount?.[0] ||
                 data.message ||
@@ -267,6 +450,7 @@
             return;
         }
 
+        closeClosePosModal();
         window.location.href = data.redirect_url || ('/ventas/cajas/' + data.cash_session_id);
     }
 
@@ -335,9 +519,25 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         loadPage();
+
         document.getElementById('salesSearch').addEventListener('input', loadSales);
         document.getElementById('salesDate').addEventListener('change', loadSales);
         document.getElementById('salesStatus').addEventListener('change', loadSales);
+
+        const closePosOverlay = document.getElementById('closePosOverlay');
+        const closePosAmount = document.getElementById('closePosAmount');
+
+        closePosOverlay.addEventListener('click', function (e) {
+            if (e.target === closePosOverlay) {
+                closeClosePosModal();
+            }
+        });
+
+        closePosAmount.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                confirmClosePos();
+            }
+        });
     });
 </script>
 @endsection
