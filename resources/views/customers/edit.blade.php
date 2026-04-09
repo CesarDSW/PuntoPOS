@@ -1,82 +1,10 @@
 @extends('layout.dashboard_design')
 
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('css/pages/customers/edit.css') }}">
+@endpush
+
 @section('content')
-<style>
-    .customer-edit-page {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-    }
-
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 16px;
-        flex-wrap: wrap;
-    }
-
-    .page-header h1 {
-        margin: 0 0 8px;
-        font-size: 32px;
-        color: #0f172a;
-    }
-
-    .page-header p {
-        margin: 0;
-        color: #64748b;
-        font-size: 16px;
-    }
-
-    .btn-back {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        height: 48px;
-        padding: 0 20px;
-        border: 1px solid #d1d5db;
-        border-radius: 12px;
-        background: #fff;
-        color: #0f172a;
-        text-decoration: none;
-        font-weight: 600;
-    }
-
-    .edit-card {
-        background: #fff;
-        border: 1px solid #e5e7eb;
-        border-radius: 18px;
-        padding: 24px;
-        max-width: 900px;
-    }
-
-    .edit-card h2 {
-        margin: 0 0 20px;
-        font-size: 18px;
-        color: #0f172a;
-    }
-
-    .form-row-custom {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-    }
-
-    .actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 12px;
-        margin-top: 22px;
-        padding-top: 18px;
-        border-top: 1px solid #e5e7eb;
-    }
-
-    @media (max-width: 768px) {
-        .form-row-custom {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
 
 <div class="customer-edit-page">
     <div class="page-header">

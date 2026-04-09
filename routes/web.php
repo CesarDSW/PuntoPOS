@@ -171,6 +171,7 @@ Route::middleware('auth')->group(function () {
     
     // Historial de cajas
     Route::view('/ventas/cajas', 'sales.cash-history')->name('sales.cash.history');
+    
     Route::get('/ventas/cajas/{id}', function (int $id) {
         return view('sales.cash-session-show', [
             'cashSessionId' => $id,

@@ -509,7 +509,7 @@
                             <p>Actualiza tu contraseña periódicamente</p>
                         </div
                         >
-                        <form method="POST" action="{{ route('password.update') }}">
+                        <form method="POST" action="{{ route('settings.password.update') }}">
                             @csrf
 
                             <div class="form-group">
