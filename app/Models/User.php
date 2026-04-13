@@ -41,4 +41,8 @@ class User extends Authenticatable
     'two_factor_recovery_codes',
    ];
 
+   public function rol()
+   {
+       return $this->belongsTo(Rol::class, 'rol_idfk', 'rol_id');
+   }
 }

@@ -1,30 +1,50 @@
+@php
+    $currentRoleName = match((int) auth()->user()->rol_idfk){
+        1 => 'ADMINISTRADOR',
+        2 => 'GERENTE',
+        3 => 'CAJERO',
+        default => '',
+    };
+
+    $currentRoleLabel = match($currentRoleName) {
+        'ADMIN', 'ADMINISTRADOR' => 'Administrador',
+        'GERENTE' => 'Gerente',
+        'CAJERO' => 'Cajero',
+        default => 'Sin rol',
+    };
+
+    $isGerente = $currentRoleName === 'GERENTE';
+@endphp
+
 <header class="topbar">
     <div class="topbar-left">
         <input type="text" placeholder="Buscar..." readonly>
     </div>
 
     <div class="topbar-right">
-        <div class="branch-selector">
-            <button type="button" class="branch-button" id="branchButton">
-                <span class="branch-label">Sucursal actual</span>
-                <span class="branch-name" id="currentBranchName">Cargando...</span>
-            </button>
-
-            <div class="branch-dropdown" id="branchDropdown">
-                <div id="branchDropdownList"></div>
-
-                <div class="branch-dropdown-divider"></div>
-
-                <button type="button" class="branch-create-link" id="openCreateBranchModal">
-                    + Crear nueva sucursal
+        @if(!$isGerente)
+            <div class="branch-selector">
+                <button type="button" class="branch-button" id="branchButton">
+                    <span class="branch-label">Sucursal actual</span>
+                    <span class="branch-name" id="currentBranchName">Cargando...</span>
                 </button>
+
+                <div class="branch-dropdown" id="branchDropdown">
+                    <div id="branchDropdownList"></div>
+
+                    <div class="branch-dropdown-divider"></div>
+
+                    <button type="button" class="branch-create-link" id="openCreateBranchModal">
+                        + Crear nueva sucursal
+                    </button>
+                </div>
             </div>
-        </div>
+        @endif
 
         <div class="user-box">
             <div class="user-info">
                 <div class="user-name">{{ auth()->user()->name_user }}</div>
-                <div class="user-role">Administrador</div>
+                <div class="user-role">{{ $currentRoleLabel }}</div>
             </div>
 
             <div class="avatar">
@@ -39,6 +59,7 @@
     </div>
 </header>
 
+@if(!$isGerente)
 <div id="branchModalOverlay" class="branch-modal-overlay">
     <div class="branch-modal">
         <div class="branch-modal-header">
@@ -58,75 +79,30 @@
                     <div class="branch-section-title">Información básica</div>
 
                     <label class="branch-field-label" for="name_branch">Nombre de la sucursal *</label>
-                    <input 
-                        type="text" 
-                        id="name_branch" 
-                        name="name_branch" 
-                        class="branch-field-input" 
-                        placeholder="Ej: Sucursal Plaza Norte" 
-                        maxlength="50" 
-                        required
-                    >
+                    <input type="text" id="name_branch" name="name_branch" class="branch-field-input" placeholder="Ej: Sucursal Plaza Norte" maxlength="50" required>
                 </div>
 
                 <div class="branch-section">
                     <div class="branch-section-title">Ubicación</div>
 
                     <label class="branch-field-label" for="address">Dirección *</label>
-                    <input 
-                        type="text" 
-                        id="address" 
-                        name="address" 
-                        class="branch-field-input" 
-                        placeholder="Calle, número, colonia" 
-                        maxlength="50" 
-                        required
-                    >
+                    <input type="text" id="address" name="address" class="branch-field-input" placeholder="Calle, número, colonia" maxlength="50" required>
 
                     <label class="branch-field-label" for="city_state">Ciudad y Estado *</label>
-                    <input 
-                        type="text" 
-                        id="city_state" 
-                        name="city_state" 
-                        class="branch-field-input" 
-                        placeholder="Ej: Ciudad de México, CDMX" 
-                        maxlength="101" 
-                        required
-                    >
+                    <input type="text" id="city_state" name="city_state" class="branch-field-input" placeholder="Ej: Ciudad de México, CDMX" maxlength="101" required>
 
                     <label class="branch-field-label" for="phone">Teléfono</label>
-                    <input 
-                        type="text" 
-                        id="phone" 
-                        name="phone" 
-                        class="branch-field-input" 
-                        placeholder="(55) 1234-5678" 
-                        maxlength="10"
-                    >
+                    <input type="text" id="phone" name="phone" class="branch-field-input" placeholder="(55) 1234-5678" maxlength="10">
                 </div>
 
                 <div class="branch-section">
                     <div class="branch-section-title">Responsable de la sucursal</div>
 
                     <label class="branch-field-label" for="responsible">Nombre del responsable</label>
-                    <input 
-                        type="text" 
-                        id="responsible" 
-                        name="responsible" 
-                        class="branch-field-input" 
-                        placeholder="Nombre completo" 
-                        maxlength="50"
-                    >
+                    <input type="text" id="responsible" name="responsible" class="branch-field-input" placeholder="Nombre completo" maxlength="50">
 
                     <label class="branch-field-label" for="email">Correo electrónico</label>
-                    <input 
-                        type="email" 
-                        id="email" 
-                        name="email" 
-                        class="branch-field-input" 
-                        placeholder="correo@ejemplo.com" 
-                        maxlength="320"
-                    >
+                    <input type="email" id="email" name="email" class="branch-field-input" placeholder="correo@ejemplo.com" maxlength="320">
                 </div>
 
                 <div class="branch-note">
@@ -145,9 +121,12 @@
         </div>
     </div>
 </div>
+@endif
 
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
+    const isGerente = @json($isGerente);
+
     const branchButton = document.getElementById('branchButton');
     const branchDropdown = document.getElementById('branchDropdown');
     const branchDropdownList = document.getElementById('branchDropdownList');
@@ -158,9 +137,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const openCreateBranchModal = document.getElementById('openCreateBranchModal');
     const closeCreateBranchModal = document.getElementById('closeCreateBranchModal');
     const cancelCreateBranchModal = document.getElementById('cancelCreateBranchModal');
-    
     const branchModalOverlay = document.getElementById('branchModalOverlay');
-    
     const createBranchForm = document.getElementById('createBranchForm');
     const branchFormMessage = document.getElementById('branchFormMessage');
     const submitCreateBranch = document.getElementById('submitCreateBranch');
@@ -174,10 +151,15 @@ document.addEventListener('DOMContentLoaded', async function () {
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             });
-            
+
             const data = await response.json().catch(() => ({}));
 
-            currentBranchName.textContent = data.current_branch_name ?? 'Sin sucursal';
+            if (currentBranchName) {
+                currentBranchName.textContent = data.current_branch_name ?? 'Sin sucursal';
+            }
+
+            if (!branchDropdownList) return;
+
             branchDropdownList.innerHTML = '';
 
             if (!data.branches || data.branches.length === 0) {
@@ -215,12 +197,16 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                 branchDropdownList.appendChild(btn);
             });
-        } catch (error){
-            currentBranchName.textContent = 'Sin sucursal';
-        }   
+        } catch (error) {
+            if (currentBranchName) {
+                currentBranchName.textContent = 'Sin sucursal';
+            }
+        }
     }
 
     function resetBranchMessage() {
+        if (!branchFormMessage) return;
+
         branchFormMessage.style.display = 'none';
         branchFormMessage.textContent = '';
         branchFormMessage.className = 'branch-form-message';
@@ -230,12 +216,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (!branchModalOverlay) return;
 
         branchModalOverlay.classList.add('show');
-        document.body.classList.add('modal-open');
-
-        if (branchDropdown){
+        if (branchDropdown) {
             branchDropdown.classList.remove('show');
         }
-
         resetBranchMessage();
     }
 
@@ -243,58 +226,52 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (!branchModalOverlay) return;
 
         branchModalOverlay.classList.remove('show');
-        document.body.classList.remove('modal-open');
-
-        if (createBranchForm){
+        if (createBranchForm) {
             createBranchForm.reset();
         }
-
         resetBranchMessage();
     }
 
     function showError(message) {
+        if (!branchFormMessage) return;
         branchFormMessage.textContent = message;
         branchFormMessage.className = 'branch-form-message error';
         branchFormMessage.style.display = 'block';
     }
 
     function showSuccess(message) {
+        if (!branchFormMessage) return;
         branchFormMessage.textContent = message;
         branchFormMessage.className = 'branch-form-message success';
         branchFormMessage.style.display = 'block';
     }
 
-    if (branchButton && branchDropdown) {
+    if (!isGerente && branchButton && branchDropdown) {
         branchButton.addEventListener('click', function (e) {
-           e.stopPropagation();
-           branchDropdown.classList.toggle('show');
+            e.stopPropagation();
+            branchDropdown.classList.toggle('show');
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!branchButton.contains(e.target) && !branchDropdown.contains(e.target)) {
+                branchDropdown.classList.remove('show');
+            }
         });
     }
 
-    document.addEventListener('click', function (e) {
-        if (
-            branchButton && 
-            branchDropdown &&
-            !branchButton.contains(e.target) && 
-            !branchDropdown.contains(e.target)
-        ) {
-            branchDropdown.classList.remove('show');
-        }
-    });
-
-    if(openCreateBranchModal) {
-        openCreateBranchModal.addEventListener('click', function () {
-            openModal();
-        });
+    if (openCreateBranchModal) {
+        openCreateBranchModal.addEventListener('click', openModal);
     }
 
-    if(closeCreateBranchModal) {
-        closeCreateBranchModal.addEventListener('click', function () {
-            closeModal();
-        });
+    if (closeCreateBranchModal) {
+        closeCreateBranchModal.addEventListener('click', closeModal);
     }
 
-    if(branchModalOverlay) {
+    if (cancelCreateBranchModal) {
+        cancelCreateBranchModal.addEventListener('click', closeModal);
+    }
+
+    if (branchModalOverlay) {
         branchModalOverlay.addEventListener('click', function (e) {
             if (e.target === branchModalOverlay) {
                 closeModal();
@@ -302,11 +279,11 @@ document.addEventListener('DOMContentLoaded', async function () {
         });
     }
 
-    if(createBranchForm) {
+    if (createBranchForm) {
         createBranchForm.addEventListener('submit', async function (e) {
             e.preventDefault();
 
-           resetBranchMessage();
+            resetBranchMessage();
 
             const formData = new FormData(createBranchForm);
             const cityState = (formData.get('city_state') || '').trim();

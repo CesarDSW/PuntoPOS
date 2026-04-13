@@ -125,6 +125,21 @@ class BranchContextController extends Controller
 
     public function store(Request $request)
     {
+        $user = auth()->user();
+
+        $roleName = match ((int) $user->rol_idfk){
+            1 => 'ADMINISTRADOR',
+            2 => 'GERENTE',
+            3 => 'CAJERO',
+            default => '',
+        };
+
+        if($roleName === 'GERENTE'){
+            return response()->json([
+                'message' => 'No tienes permisos para crear sucursales.'
+            ], 403);
+        }
+
         $validated = $request->validate([
             'name_branch' => ['required', 'string', 'max:50'],
             'address' => ['required', 'string', 'max:50'],

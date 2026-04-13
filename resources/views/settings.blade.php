@@ -58,112 +58,216 @@
 
         <section class="settings-content">
             @if(request('tab', 'perfil') == 'perfil')
-                <div class="settings-card">
-                    <h2>Información del negocio</h2>
-                    
-                    <form method='POST' action="{{ route('settings.update') }}" enctype="multipart/form-data">
-                        @csrf
-                        <input type="hidden" name="tab_section" value="perfil">
+                @if($canEditBusinessProfile)
+                    <div class="settings-card">
+                        <h2>Información del negocio</h2>
                         
-                        <div class="form-group">
-                            <label>Logo</label>
-                            <input type="file" name="logo" class="form-input">
-                        </div>
-                        
-                        @if(!empty($company->logo))
-                        <div class="form-group">
-                            <label>Logo actual</label><br>
-                            <img src="{{ asset('storage/' . $company->logo) }}" 
-                            alt="Logo de la empresa"
-                            style="max-width: 180px; border-radius: 12px; border: 1px solid #d1d5db; padding: 8px;">
-                        </div>
-                        @endif
-                        
-                        <div class="form-group">
-                            <label>Nombre de la empresa</label>
-                            <input type="text" name="name_company" class="form-input" 
-                            value="{{ old('name_company', $company->name_company) }}">
-                        </div>
-                        
-                        <div class="form-row">
+                        <form method='POST' action="{{ route('settings.update') }}" enctype="multipart/form-data">
+                            @csrf
+                            <input type="hidden" name="tab_section" value="perfil">
+                            
                             <div class="form-group">
-                                <label>RFC</label>
-                                <input type="text" name="rfc" class="form-input" 
-                                value="{{ old('rfc', $company->rfc) }}">
+                                <label>Logo</label>
+                                <input type="file" name="logo" class="form-input">
+                            </div>
+                            
+                            @if(!empty($company->logo))
+                            <div class="form-group">
+                                <label>Logo actual</label><br>
+                                <img src="{{ asset('storage/' . $company->logo) }}" 
+                                alt="Logo de la empresa"
+                                style="max-width: 180px; border-radius: 12px; border: 1px solid #d1d5db; padding: 8px;">
+                            </div>
+                            @endif
+                            
+                            <div class="form-group">
+                                <label>Nombre de la empresa</label>
+                                <input type="text" name="name_company" class="form-input" 
+                                value="{{ old('name_company', $company->name_company) }}">
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>RFC</label>
+                                    <input type="text" name="rfc" class="form-input" 
+                                    value="{{ old('rfc', $company->rfc) }}">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Correo</label>
+                                    <input type="email" name="email" class="form-input"
+                                    value="{{ old('email', $company->email) }}">
+                                </div>
                             </div>
                             
                             <div class="form-group">
-                                <label>Correo</label>
-                                <input type="email" name="email" class="form-input"
-                                value="{{ old('email', $company->email) }}">
+                                <label>Direccion</label>
+                                <input type="text" name="address" class="form-input" 
+                                value="{{ old('address', $company->address) }}">
                             </div>
-                        </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Ciudad</label>
+                                    <input type="text" name="city" class="form-input" 
+                                    value="{{ old('city', $company->city) }}">
+                                </div>
+                            
+                                <div class="form-group">
+                                    <label>Estado</label>
+                                    <input type="text" name="state" class="form-input" 
+                                    value="{{ old('state', $company->state) }}">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Código postal</label>
+                                    <input type="text" name="zip_code" class="form-input" 
+                                    value="{{ old('zip_code', $company->zip_code) }}">
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Teléfono</label>
+                                    <input type="text" name="phone" class="form-input" 
+                                    value="{{ old('phone', $company->phone) }}">
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Hora de apertura</label>
+                                    <input type="time" name="opening_time" class="form-input" 
+                                    value="{{ old('opening_time', $company->opening_time) }}">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Hora de cierre</label>
+                                    <input type="time" name="closing_time" class="form-input" 
+                                    value="{{ old('closing_time', $company->closing_time) }}">
+                                </div>   
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Tipo de moneda</label>
+                                <select name="currency" class="form-input">
+                                    <option value="">Selecciona</option>
+                                    <option value="MXN" @selected(old('currency', $company->currency) == 'MXN')>MXN - Peso Mexicano</option>
+                                    <option value="USD" @selected(old('currency', $company->currency) == 'USD')>USD - Dólar</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Descripción del negocio</label>
+                                <textarea name="description_company" class="form-textarea">{{ old('description_company', $company->description_company) }}</textarea>
+                            </div>
+
+                            <button type="submit" class="btn-save">Guardar cambios</button>
+                        </form>
+                    </div>
+                @else
+                    <div class="settings-card">
+                        <h2>Perfil del negocio</h2>
+                        <p>Como gerente puedes consultar la información de la empresa y tu sucursal asignada, pero no modificarla.</p>
                         
                         <div class="form-group">
-                            <label>Direccion</label>
-                            <input type="text" name="address" class="form-input" 
-                            value="{{ old('address', $company->address) }}">
+                            <label>Empresa / Sucursal</label>
+                            <input 
+                                type="text"
+                                class="form-input"
+                                value="{{ $company->name_company }}{{ $assignedBranch ? ' - ' . $assignedBranch->name_branch : '' }}"
+                                readonly
+                            >
                         </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>RFC de la empresa</label>
+                                <input 
+                                    type="text"
+                                    class="form-input"
+                                    value="{{ $company->rfc }}"
+                                    readonly
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label>Correo de la sucursal</label>
+                                <input 
+                                    type="text"
+                                    class="form-input"
+                                    value="{{ $assignedBranch->email ?? 'No asignado' }}"
+                                    readonly
+                                >
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Responsable de la sucursal</label>
+                                <input 
+                                    type="text"
+                                    class="form-input"
+                                    value="{{ $assignedBranch->responsible ?? 'No asignado' }}"
+                                    readonly
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label>Teléfono de la sucursal</label>
+                                <input 
+                                    type="text" 
+                                    class="form-input" 
+                                    value="{{ $assignedBranch->phone ?? 'No asignado' }}"
+                                    readonly
+                                >
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Dirección de la sucursal</label>
+                            <input 
+                                type="text"
+                                class="form-input"
+                                value="{{ $assignedBranch->address ?? 'No asignada' }}"
+                                readonly
+                            >
+                        </div>
+
                         
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Ciudad</label>
-                                <input type="text" name="city" class="form-input" 
-                                value="{{ old('city', $company->city) }}">
+                                <input 
+                                    type="text"
+                                    class="form-input"
+                                    value="{{ $assignedBranch->city ?? 'No asignada' }}"
+                                    readonly
+                                >
                             </div>
-                        
+
                             <div class="form-group">
                                 <label>Estado</label>
-                                <input type="text" name="state" class="form-input" 
-                                value="{{ old('state', $company->state) }}">
+                                <input 
+                                    type="text"
+                                    class="form-input"
+                                    value="{{ $assignedBranch->state ?? 'No asignado' }}"
+                                    readonly
+                                >
                             </div>
-                        </div>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Codigo postal</label>
-                                <input type="text" name="zip_code" class="form-input" 
-                                value="{{ old('zip_code', $company->zip_code) }}">
-                            </div>
-
-                            <div class="form-group">
-                                <label>Teléfono</label>
-                                <input type="text" name="phone" class="form-input" 
-                                value="{{ old('phone', $company->phone) }}">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Hora de apertura</label>
-                                <input type="time" name="opening_time" class="form-input" 
-                                value="{{ old('opening_time', $company->opening_time) }}">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>Hora de cierre</label>
-                                <input type="time" name="closing_time" class="form-input" 
-                                value="{{ old('closing_time', $company->closing_time) }}">
-                            </div>   
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Tipo de moneda</label>
-                            <select name="currency" class="form-input">
-                                <option value="">Selecciona</option>
-                                <option value="MXN" @selected(old('currency', $company->currency) == 'MXN')>MXN - Peso Mexicano</option>
-                                <option value="USD" @selected(old('currency', $company->currency) == 'USD')>USD - Dólar</option>
-                            </select>
                         </div>
 
                         <div class="form-group">
-                            <label>Descripción del negocio</label>
-                            <textarea name="description_company" class="form-textarea">{{ old('description_company', $company->description_company) }}</textarea>
+                            <label>Moneda del negocio</label>
+                            <input 
+                                type="text"
+                                class="form-input"
+                                value="{{ $company->currency ?: 'No confirmada' }}"
+                                readonly
+                            >
                         </div>
-
-                        <button type="submit" class="btn-save">Guardar cambios</button>
-                    </form>
-                </div>
+                    </div>
+                @endif
 
             @elseif(request('tab') == 'usuarios')
                 <div class="settings-card">
@@ -201,37 +305,73 @@
                             <div>
                                 <h3>{{ $userItem->name_user }}</h3>
                                 <p>{{ $userItem->email }}</p>
+
+                                @if(!empty($userItem->branch_idfk))
+                                    @php
+                                        $assignedBranch = $branches->firstWhere('branch_id', $userItem->branch_idfk);
+                                    @endphp
+
+                                    @if($assignedBranch)
+                                        <p style="margin-top: 6px; color: #64748b;">
+                                            Sucursal: {{ $assignedBranch->name_branch }}
+                                        </p>
+                                    @endif
+                                @endif
                             </div>
 
                             <div class="user-actions-right">
                                 @php
-                                    $roleName = match($userItem->rol_idfk){
-                                        1 => 'Administrador',
-                                        2 => 'Gerente',
-                                        3 => 'Cajero',
-                                        default => 'Sin rol'
+                                    $targetRoleModel = $roles->firstWhere('rol_id', $userItem->rol_idfk);
+                                    $targetRoleName = strtoupper(trim((string) optional($targetRoleModel)->type_rol));
+
+                                    $displayRole = match($targetRoleName){
+                                        'ADMIN', 'ADMINISTRADOR' => 'Administrador',
+                                        'GERENTE' => 'Gerente',
+                                        'CAJERO' => 'Cajero',
+                                        default => $targetRoleModel->type_rol ?? 'Sin rol',
                                     };
+
+                                    $isSelf = (int) $currentUserId === (int) $userItem->userr_id;
+                                    $isCurrentGerente = $currentRoleName === 'GERENTE';
+                                    $isTargetAdmin = in_array($targetRoleName, ['ADMIN', 'ADMINISTRADOR'], true);
+                                    $isTargetOwner = (int) $ownerUserId === (int) $userItem->userr_id;
+
+                                    $canEdit = !$isTargetOwner || $isSelf;
+                                    $canDelete = !$isSelf && !$isTargetOwner;
+
+                                    if($isCurrentGerente && $isTargetAdmin){
+                                        $canEdit = false;
+                                        $canDelete = false;
+                                    }
                                 @endphp
 
-                                <span class="role-badge">{{ $roleName }}</span>
+                                <span class="role-badge">{{ $displayRole }}</span>
 
                                 <div class ="user-action-buttons">
-                                    <button type="button" class="btn-icon-edit"
-                                        onclick="openEditUserModal(
-                                            '{{ $userItem->userr_id }}',
-                                            '{{ $userItem->name_user }}',
-                                            '{{ $userItem->phone }}',
-                                            '{{ $userItem->email }}',
-                                            '{{ $userItem->rol_idfk }}'
-                                        )">
+                                    @if($canEdit)
+                                        <button 
+                                            type="button" 
+                                            class="btn-icon-edit"
+                                            onclick="openEditUserModal(
+                                                '{{ $userItem->userr_id }}',
+                                                @js($userItem->name_user),
+                                                @js($userItem->phone),
+                                                @js($userItem->email),
+                                                '{{ $userItem->rol_idfk }}',
+                                                '{{ $userItem->branch_idfk ?? '' }}'
+                                            )"
+                                        >
                                             Editar
-                                    </button>
+                                        </button>
+                                    @endif
 
-                                    <form method="POST" action="{{ route('users.delete', $userItem->userr_id) }}" onsubmit="return confirm('¿Seguro que deseas eliminar este usuario?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn-icon-delete">Eliminar</button>
-                                    </form>
+                                    @if($canDelete)
+                                        <form method="POST" action="{{ route('users.delete', $userItem->userr_id) }}" onsubmit="return confirm('¿Seguro que deseas eliminar este usuario?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn-icon-delete">Eliminar</button>
+                                        </form>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -271,16 +411,36 @@
                                     
                                 <div class="form-group">
                                     <label>Rol</label>
-                                    <select name="rol_idfk" class="form-input" required>
+                                    <select name="rol_idfk" id="create_rol_idfk" class="form-input" required>
                                         <option value="">Selecciona un rol</option>
+
                                         @foreach($roles as $rol)
-                                            <option value="{{ $rol->rol_id }}" @selected(old('rol_idfk') == $rol->rol_id)>
-                                                {{ $rol->type_rol }}
-                                            </option>
+                                            @php
+                                                $roleOptionName = strtoupper(trim((string) $rol->type_rol));
+                                                $managerCanSee = $currentRoleName !== 'GERENTE' || $roleOptionName === 'CAJERO';
+                                            @endphp
+
+                                            @if($managerCanSee)
+                                                <option value="{{ $rol->rol_id }}" @selected(old('rol_idfk') == $rol->rol_id)>
+                                                    {{ $rol->type_rol }}
+                                                </option>
+                                            @endif
                                         @endforeach
                                     </select>
                                 </div>
                                 
+                                <div class="form-group" id="createBranchGroup" style="display: none;">
+                                    <label for="create_branch_idfk">Sucursal</label>
+                                    <select name="branch_idfk" id="create_branch_idfk" class="form-input">
+                                        <option value="">Selecciona una sucursal</option>
+                                        @foreach($branches as $branch)
+                                            <option value="{{ $branch->branch_id }}" @selected(old('branch_idfk') == $branch->branch_id)>
+                                                {{ $branch->name_branch }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label>Contraseña</label>
@@ -333,7 +493,10 @@
 
                                 <div class="form-group">
                                     <label>Rol</label>
-                                    <select name="rol_idfk" id="edit_rol_idfk" class="form-input">
+
+                                    <input type="hidden" name ="rol_idfk" id="edit_rol_idfk_hidden">
+
+                                    <select id="edit_rol_idfk" class="form-input">
                                         <option value="">Selecciona un rol</option>
                                         @foreach($roles as $rol)
                                             <option value="{{ $rol->rol_id }}">{{ $rol->type_rol }}</option>
@@ -341,8 +504,19 @@
                                     </select>
                                 </div>
 
-                                <div class="future-box">
-                                    asignar usuario a una sucursal
+                                <div class="form-group" id="editBranchGroup" style="display: none;">
+                                    <label for="edit_branch_idfk">Sucursal</label>
+                                    
+                                    <input type="hidden" name="branch_idfk" id="edit_branch_idfk_hidden">
+
+                                    <select id="edit_branch_idfk" class="form-input">
+                                        <option value="">Selecciona una sucursal</option>
+                                        @foreach($branches as $branch)
+                                            <option value="{{ $branch->branch_id }}">
+                                                {{ $branch->name_branch }}
+                                            </option>
+                                        @endforeach
+                                    </select>
                                 </div>
                             </div>
 
@@ -355,31 +529,151 @@
                 </div>
                 
                 <script>
-                function openUserModal(){
-                    document.getElementById('userModal').style.display = 'flex';
-                }
+                    const currentUserId = {{ (int) $currentUserId }};
+                    const currentRoleName = @js($currentRoleName);
+                    const ownerUserId = {{ (int) $ownerUserId }};
 
-                function closeUserModal(){
-                    document.getElementById('userModal').style.display = 'none';
-                }
+                    function openUserModal(){
+                        document.getElementById('userModal').style.display = 'flex';
+                        toggleCreateBranchField();
+                    }
 
-                function openEditUserModal(id, name, phone, email, rolId){
-                    document.getElementById('edit_name_user').value = name;
-                    document.getElementById('edit_phone').value = phone;
-                    document.getElementById('edit_email').value = email;
-                    document.getElementById('editUserForm').action = '/configuracion/usuarios/' + id;
-                    document.getElementById('editUserModal').style.display = 'flex';
-                }
+                    function closeUserModal(){
+                        document.getElementById('userModal').style.display = 'none';
+                    }
 
-                function closeEditUserModal(){
-                    document.getElementById('editUserModal').style.display = 'none';
-                }
+                    function openEditUserModal(id, name, phone, email, rolId, branchId){
+                        const isSelf = Number(currentUserId) === Number(id);
+                        const isTargetOwner = Number(ownerUserId) === Number(id);
 
-                @if($errors->any() && request('tab') == 'usuarios')
+                        document.getElementById('edit_name_user').value = name;
+                        document.getElementById('edit_phone').value = phone;
+                        document.getElementById('edit_email').value = email;
+
+                        document.getElementById('edit_rol_idfk').value = rolId;
+                        document.getElementById('edit_rol_idfk_hidden').value = rolId;
+
+                        document.getElementById('edit_branch_idfk').value = branchId ?? '';
+                        document.getElementById('edit_branch_idfk_hidden').value = branchId ?? '';
+
+                        const isRoleLocked =
+                            isTargetOwner ||
+                            (isSelf && (
+                                currentRoleName === 'GERENTE' ||
+                                currentRoleName === 'ADMIN' ||
+                                currentRoleName === 'ADMINISTRADOR'
+                            ));
+
+                        const isGerenteEditingSelf =
+                            isSelf && currentRoleName === 'GERENTE';
+
+                        document.getElementById('editUserForm').action = '/configuracion/usuarios/' + id;
+                        document.getElementById('editUserModal').style.display = 'flex';
+
+                        document.getElementById('edit_rol_idfk').disabled = isRoleLocked;
+                        document.getElementById('edit_branch_idfk').disabled = isGerenteEditingSelf;
+
+                        toggleEditBranchField(isGerenteEditingSelf);
+                    }
+
+                    function closeEditUserModal(){
+                        document.getElementById('editUserModal').style.display = 'none';
+                    }
+
+                    function getSelectedRoleText(select) {
+                        if(!select) return '';
+                        const option = select.options[select.selectedIndex];
+                        return option ? option.text.trim().toUpperCase() : '';
+                    }
+
+                    function toggleCreateBranchField() {
+                        const roleSelect = document.getElementById('create_rol_idfk');
+                        const branchGroup = document.getElementById('createBranchGroup');
+                        const branchSelect = document.getElementById('create_branch_idfk');
+
+                        if(!roleSelect || !branchGroup || !branchSelect) return;
+
+                        const roleText = getSelectedRoleText(roleSelect);
+                        const show = roleText === 'CAJERO';
+
+                        branchGroup.style.display = show ? 'block' : 'none';
+
+                        if(!show) {
+                            branchSelect.value = '';
+                        }
+                    }
+
+                    function toggleEditBranchField(forceReadOnly = false){
+                        const roleSelect = document.getElementById('edit_rol_idfk');
+                        const branchGroup = document.getElementById('editBranchGroup');
+                        const branchSelect = document.getElementById('edit_branch_idfk');
+
+                        if(!roleSelect || !branchGroup || !branchSelect) return;
+
+                        const roleText = getSelectedRoleText(roleSelect);
+                        const show = roleText === 'CAJERO' || roleText === 'GERENTE';
+
+                        branchGroup.style.display = show ? 'block' : 'none';
+
+                        if(!show){
+                            branchSelect.value = '';
+                            document.getElementById('edit_branch_idfk_hidden').value = '';
+                            return;
+                        }
+
+                        if(forceReadOnly){
+                            return;
+                        }
+                    }
+
                     document.addEventListener('DOMContentLoaded', function(){
-                        openUserModal();
+                        const createRoleSelect = document.getElementById('create_rol_idfk');
+                        const editRoleSelect = document.getElementById('edit_rol_idfk');
+                        const editBranchSelect = document.getElementById('edit_branch_idfk');
+
+                        if(createRoleSelect){
+                            createRoleSelect.addEventListener('change', toggleCreateBranchField);
+                            toggleCreateBranchField();
+                        }
+
+                        if(editRoleSelect){
+                            editRoleSelect.addEventListener('change', function() {
+                                document.getElementById('edit_rol_idfk_hidden').value = this.value;
+                                toggleEditBranchField();
+                            });
+                            
+                            toggleEditBranchField();
+                        }
+
+                        if(editBranchSelect){
+                            editBranchSelect.addEventListener('change', function(){
+                                document.getElementById('edit_branch_idfk_hidden').value = this.value;
+                            });
+                        }
                     });
-                @endif
+
+                    @if($errors->any() && request('tab') == 'usuarios')
+                        document.addEventListener('DOMContentLoaded', function(){
+                            closeUserModal();
+                            closeEditUserModal();
+
+                            const createRole = document.getElementById('create_rol_idfk');
+                            const createBranch = document.getElementById('create_branch_idfk');
+                            const createBranchGroup = document.getElementById('createBranchGroup');
+
+                            if(createRole){
+                                createRole.value = '';
+                            }
+
+                            if(createBranch){
+                                createBranch.value = '';
+                            }
+
+                            if(createBranchGroup){
+                                createBranchGroup.style.display = 'none';
+                            }
+                        });
+                    @endif
                 </script>
 
             @elseif(request('tab') == 'pagos')
