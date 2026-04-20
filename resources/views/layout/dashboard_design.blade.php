@@ -15,7 +15,7 @@
     @stack('styles')
 </head>
 
-<body>
+<body data-theme-preference="{{ $uiPreferences['theme'] ?? 'light' }}">
     <div class="app-shell">
         @include('partials.sidebar')
 
@@ -29,6 +29,28 @@
     </div>
 
     <script>
+        (function () {
+            const body = document.body;
+            const preference = body.dataset.themePreference || 'light';
+
+            function applyTheme() {
+                let resolved = preference;
+
+                if (preference === 'auto') {
+                    resolved = window.matchMedia('(prefers-color-scheme: dark').matches ? 'dark' : 'light';  
+                }
+
+                body.setAttribute('data-theme', resolved);
+            }
+
+            applyTheme();
+
+            const media = window.matchMedia('(prefers-color-scheme): dark');
+            if (media && preference === 'auto') {
+                media.addEventListener('change', applyTheme);
+            }
+        })();
+
         document.addEventListener('DOMContentLoaded', function(){
             const logoInput = document.getElementById('logoInput');
             const addressInput = document.getElementById('addressInput');

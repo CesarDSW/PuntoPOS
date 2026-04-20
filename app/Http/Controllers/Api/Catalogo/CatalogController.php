@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Api\Catalogo;
 
+use App\Support\CompanyPreference;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+
 
 class CatalogController extends CatalogBaseController
 {
@@ -112,6 +114,10 @@ class CatalogController extends CatalogBaseController
                     "),
                     DB::raw('COALESCE(st.total_stock, 0) as stock'),
                     DB::raw('COALESCE(bps_current.minimum_stock, 0) as minimum_stock'),
+                    'price_display' => CompanyPreference::formatMoneyForCompany($companyId, $row->price ?? 0),
+                    'cost_display' => $row->cost !== null
+                        ? CompanyPreference::formatMoneyForCompany($companyId, $row->cost)
+                        : null,
                 ]);
 
             if ($categoryId) {
@@ -141,9 +147,13 @@ class CatalogController extends CatalogBaseController
                 });
             }
 
-            $products = $productQuery->get()->map(function ($row) {
+            $products = $productQuery->get()->map(function ($row) use ($companyId) {
                 $row->status_label = ((int) $row->status === 1) ? 'activo' : 'inactivo';
                 $row->stock_display = ((int) $row->stock) . ' unidades';
+                $row->price_display = CompanyPreference::formatMoneyForCompany($companyId, $row->price ?? 0);
+                $row->cost_display = $row->cost !== null
+                        ? CompanyPreference::formatMoneyForCompany($companyId, $row->cost)
+                        : null;
                 return $row;
             });
         }
@@ -188,6 +198,8 @@ class CatalogController extends CatalogBaseController
             $services = $serviceQuery->get()->map(function ($row) {
                 $row->status_label = ((int) $row->status === 1) ? 'activo' : 'inactivo';
                 $row->stock_display = 'N/A';
+                $row->price_display = CompanyPreference::formatMoneyForCompany($companyId, $row->price ?? 0);
+                $row->cost_display = null;
                 return $row;
             });
         }

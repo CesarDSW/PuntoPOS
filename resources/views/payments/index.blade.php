@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layout.dashboard_design')
 
 @section('title', 'Pagos')
 
@@ -89,11 +89,7 @@
 
 <script>
     function money(value) {
-        return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-            maximumFractionDigits: 2
-        }).format(Number(value || 0));
+        return window.appFormat.money(value);
     }
 
     async function apiFetch(url, options = {}) {
@@ -189,7 +185,7 @@
         tbody.innerHTML = items.map(item => `
             <tr>
                 <td style="font-weight:700; color:#1d4ed8;">${item.payment_code}</td>
-                <td>${item.date_time}</td>
+                <td>${window.appFormat.dateTime(item.date_time)}< /td>
                 <td style="font-weight:600;">${item.customer.name_customer}</td>
                 <td>${item.concept}</td>
                 <td style="font-weight:700;">${money(item.amount)}</td>

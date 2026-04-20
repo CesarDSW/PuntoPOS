@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layout.dashboard_design')
 
 @section('title', 'Inventario')
 
@@ -6,8 +6,8 @@
     <link rel="stylesheet" href="{{ asset('css/pages/inventory/index.css') }}">
 @endpush
 
-
 @section('content')
+
 <div class="inventory-wrap">
     <div class="inventory-header">
         <div>
@@ -220,11 +220,7 @@
     let bulkProducts = [];
 
     function formatMoney(value) {
-        return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-            maximumFractionDigits: 0
-        }).format(Number(value || 0));
+        return window.appFormat.money(value);
     }
 
     function showError(boxId, message) {
@@ -551,7 +547,7 @@
                     </div>
                     <div>
                         <div class="text-muted">Fecha</div>
-                        <div style="font-weight:bold;">${item.date_time}</div>
+                        <div style="font-weight:bold;">${window.addFormat.dateTime(item.date_time)}</div>
                     </div>
                     <div>
                         <div class="text-muted">Usuario</div>

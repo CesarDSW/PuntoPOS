@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\Inventory;
 
 use App\Http\Controllers\Controller;
+use App\Services\NotificationService;
+use App\Support\CompanyPreference;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -211,12 +213,23 @@ class InventoryAdjustmentController extends Controller
                 ->update([
                     'stocks' => $newStock,
                 ]);
+            
+            app(NotificationService::class)->handleStockChanged(
+                companyId: $companyId,
+                branchId: $branchId,
+                productId: $productId,
+                productName: (string) $product->name_product,
+                oldStock: $currentStock,
+                newStock: $newStock,
+                minimumStock: $minimumStock
+            );
 
             return [
                 'message' => 'Ajuste de inventario realizado correctamente.',
                 'data' => [
                     'movement_id'    => $movementId,
                     'date_time'      => now()->toDateTimeString(),
+                    'date_time_display' => CompanyPreference::formatDateTimeForCompany($companyId, now()),
                     'type'           => $movementType,
                     'reason'         => $reason,
                     'branch_id'      => $branchId,
@@ -339,9 +352,10 @@ class InventoryAdjustmentController extends Controller
             });
         }
 
-        $history = $query
-            ->orderByDesc('im.date_time')
-            ->paginate($perPage);
+        $history->getCollection()->transform(function ($row) use ($companyId) {
+            $row->date_time_display = CompanyPreference::formatDateTimeForCompany($companyId, $row->date_time);
+            return $row;
+        });
 
         return response()->json($history);
     }
@@ -509,6 +523,16 @@ class InventoryAdjustmentController extends Controller
                     ->update([
                         'stocks' => $item['new_stock'],
                     ]);
+                
+                app(NotificationService::class)->handleStockChanged(
+                    companyId: $companyId,
+                    branchId: $branchId,
+                    productId: (int) $item['product_id'],
+                    productName: (string) $item['product_name'],
+                    oldStock: (int) $item['previous_stock'],
+                    newStock: (int) $item['new_stock'],
+                    minimumStock: (int) $item['minimum_stock']
+                );
             }
 
             return [

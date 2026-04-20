@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layout.dashboard_design')
 
 @section('title', 'Reportes')
 
@@ -153,11 +153,7 @@
     };
 
     function money(value) {
-        return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-            maximumFractionDigits: 0
-        }).format(Number(value || 0));
+        return window.appFormat.money(value);
     }
 
     function percent(value) {

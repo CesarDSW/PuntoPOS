@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layout.dashboard_design')
 
 @section('title', 'Catálogo')
 
@@ -318,11 +318,7 @@
 
     function formatMoney(value) {
         if (value === null || value === undefined || value === '') return '-';
-        return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-            maximumFractionDigits: 2
-        }).format(Number(value || 0));
+        return window.appFormat.money(value);
     }
 
     function showError(boxId, message) {

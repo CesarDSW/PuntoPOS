@@ -172,6 +172,105 @@ th { background:#f8fafc; font-size:12px; color:#64748b; text-transform:uppercase
     padding:14px;
 }
 
+.summary-card,
+.filters-card,
+.card,
+.table-card,
+.chart-card,
+.list-card,
+.modal-box,
+.modal,
+.history-item,
+.bulk-item,
+.product-box,
+.alert-box,
+.empty-box,
+.loading-box,
+.info-card {
+    background: var(--panel-bg);
+    color: var(--panel-text);
+    border-color: var(--panel-border);
+}
+
+.input,
+.select,
+.textarea,
+input[type="text"],
+input[type="number"],
+input[type="date"],
+select,
+textarea {
+    background: var(--panel-bg);
+    color: var(--panel-text);
+    border-color: var(--panel-border);
+}
+
+th {
+    background: var(--panel-bg-soft);
+    color: var(--panel-muted);
+    border-color: var(--panel-border);
+}
+
+td,
+.summary-label,
+.card-subtitle,
+.table-subtitle,
+.summary-note,
+.chart-subtitle,
+.product-meta,
+.method-meta,
+.empty-state,
+.empty-box,
+.loading-box,
+.modal-subtitle,
+.line-label,
+.bar-label,
+.bar-value,
+.legend-item,
+.category-name,
+.donut-center-label,
+.text-muted {
+    color: var(--panel-muted);
+}
+
+.summary-value,
+.card-title,
+.table-title,
+.chart-title,
+.modal-title,
+.product-name,
+.method-name,
+.product-amount,
+.method-right {
+    color: var(--panel-text);
+}
+
+table,
+th,
+td,
+.card-head,
+.table-head,
+.modal-header,
+.modal-footer,
+.modal-head,
+.modal-foot,
+.history-item,
+.bulk-item,
+.product-row,
+.method-row {
+    border-color: var(--panel-border);
+}
+
+.donut-chart::after {
+    background: var(--panel-bg);
+}
+
+.line-chart-svg,
+.bars-grid,
+.method-bar-wrap {
+    border-color: var(--panel-border);
+}
+
 @media (max-width: 1100px) {
     .summary-grid { grid-template-columns:1fr; }
     .filters-card { grid-template-columns:1fr; }

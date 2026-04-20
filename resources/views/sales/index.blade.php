@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layout.dashboard_design')
 
 @section('title', 'Ventas')
 
@@ -191,11 +191,7 @@
     let pendingSaleToCancel = null;
 
     function money(value) {
-        return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-            maximumFractionDigits: 2
-        }).format(Number(value || 0));
+        return window.appFormat.money(value);
     }
 
     function escapeHtml(value) {
@@ -460,18 +456,26 @@
             return;
         }
 
-        tbody.innerHTML = items.map(item => `
-            <tr>
-                <td style="font-weight:700; color:#1d4ed8;">${escapeHtml(item.sale_folio)}</td>
-                <td>${escapeHtml(item.date_time)}</td>
-                <td style="font-weight:600;">${escapeHtml(item.customer_name)}</td>
-                <td>${Number(item.items_count)} items</td>
-                <td style="font-weight:700;">${money(item.total)}</td>
-                <td>${escapeHtml(item.payment_method ?? '-')}</td>
-                <td>${getStatusBadge(item.status_sale)}</td>
-                <td>${buildActionButtons(item)}</td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = items.map(item => {
+            let badge = '<span class="badge badge-blue">Pagada</span>';
+            if (item.status_sale === 'PENDIENTE') badge = '<span class="badge badge-yellow">Pendiente</span>';
+            if (item.status_sale === 'CANCELADA') badge = '<span class="badge badge-red">Cancelada</span>';
+
+            return `
+                <tr>
+                    <td style="font-weight:700; color:#1d4ed8;">${item.sale_folio}</td>
+                    <td>${window.appFormat.dateTime(item.date_time)}</td>
+                    <td style="font-weight:600;">${item.customer_name}</td>
+                    <td>${item.items_count} items</td>
+                    <td style="font-weight:700;">${money(item.total)}</td>
+                    <td>${item.payment_method ?? '-'}</td>
+                    <td>${badge}</td>
+                    <td>
+                        <a href="/ventas/${item.sale_id}" class="icon-btn" title="Ver detalle">👁️</a>
+                    </td>
+                </tr>
+            `;
+        }).join('');
     }
 
     async function loadPage() {
