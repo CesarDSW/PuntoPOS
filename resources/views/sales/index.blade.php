@@ -83,6 +83,7 @@
     </div>
 </div>
 
+{{-- MODAL CERRAR POS --}}
 <div class="overlay" id="closePosOverlay">
     <div class="modal">
         <div class="modal-head">
@@ -136,8 +137,58 @@
     </div>
 </div>
 
+{{-- MODAL CANCELAR VENTA --}}
+<div class="overlay" id="cancelSaleOverlay">
+    <div class="modal modal-confirm">
+        <div class="modal-head">
+            <div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div class="danger-icon">✖</div>
+                    <div>
+                        <div style="font-size:24px; font-weight:700;">Cancelar venta</div>
+                        <div style="color:#64748b; margin-top:6px;">Esta acción cancelará la venta pendiente seleccionada.</div>
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="btn" onclick="closeCancelSaleModal()">Cerrar</button>
+        </div>
+
+        <div class="modal-body">
+            <div class="info-card danger-card">
+                <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:8px;">
+                    <span style="color:#64748b;">Acción</span>
+                    <strong>Cancelar venta</strong>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; gap:12px;">
+                    <span style="color:#64748b;">Estado actual</span>
+                    <strong>Pendiente</strong>
+                </div>
+            </div>
+
+            <div class="confirm-text" id="cancelSaleText">
+                ¿Deseas cancelar esta venta pendiente?
+            </div>
+
+            <div class="confirm-note">
+                La venta se marcará como cancelada y dejará de estar disponible para continuar.
+            </div>
+
+            <div class="error-box" id="cancelSaleErrorBox"></div>
+        </div>
+
+        <div class="modal-foot">
+            <button type="button" class="btn" onclick="closeCancelSaleModal()">Conservar venta</button>
+            <button type="button" class="btn btn-primary" id="confirmCancelSaleButton" onclick="confirmCancelPendingSale()">
+                cancelar venta
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
     const salesPosUrl = @json(route('sales.pos'));
+    let pendingSaleToCancel = null;
 
     function money(value) {
         return new Intl.NumberFormat('es-MX', {
@@ -145,6 +196,15 @@
             currency: 'MXN',
             maximumFractionDigits: 2
         }).format(Number(value || 0));
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     function showError(id, message) {
@@ -286,6 +346,94 @@
         document.getElementById('sumAvgTicket').textContent = money(data.avg_ticket_today ?? 0);
     }
 
+    function getStatusBadge(status) {
+        if (status === 'PENDIENTE') {
+            return '<span class="badge badge-yellow">Pendiente</span>';
+        }
+
+        if (status === 'CANCELADA') {
+            return '<span class="badge badge-red">Cancelada</span>';
+        }
+
+        return '<span class="badge badge-blue">Pagada</span>';
+    }
+
+    function buildActionButtons(item) {
+        if (item.status_sale === 'PENDIENTE') {
+            return `
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button
+                        type="button"
+                        class="icon-btn"
+                        title="Continuar venta"
+                        onclick="resumePendingSale(${Number(item.sale_id)})"
+                    >↩️</button>
+
+                    <button
+                        type="button"
+                        class="icon-btn"
+                        title="Cancelar venta"
+                        onclick="cancelPendingSale(${Number(item.sale_id)})"
+                    >✖️</button>
+                </div>
+            `;
+        }
+
+        return `
+            <a href="/ventas/${Number(item.sale_id)}" class="icon-btn" title="Ver detalle">👁️</a>
+        `;
+    }
+
+    function resumePendingSale(saleId) {
+        window.location.href = `${salesPosUrl}?sale_id=${saleId}`;
+    }
+
+    function cancelPendingSale(saleId) {
+        pendingSaleToCancel = saleId;
+        hideError('cancelSaleErrorBox');
+        document.getElementById('cancelSaleText').textContent = `¿Deseas cancelar la venta pendiente #${saleId}?`;
+        document.getElementById('cancelSaleOverlay').classList.add('show');
+    }
+
+    function closeCancelSaleModal() {
+        pendingSaleToCancel = null;
+        hideError('cancelSaleErrorBox');
+        document.getElementById('cancelSaleOverlay').classList.remove('show');
+    }
+
+    async function confirmCancelPendingSale() {
+        hideError('cancelSaleErrorBox');
+
+        if (!pendingSaleToCancel) {
+            showError('cancelSaleErrorBox', 'No hay ninguna venta seleccionada para cancelar.');
+            return;
+        }
+
+        const button = document.getElementById('confirmCancelSaleButton');
+        button.disabled = true;
+        button.textContent = 'Cancelando...';
+
+        const { response, data } = await apiFetch(`/api/sales/${pendingSaleToCancel}/cancel`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            }
+        });
+
+        button.disabled = false;
+        button.textContent = 'Sí, cancelar venta';
+
+        if (!response.ok) {
+            showError('cancelSaleErrorBox', data.message || 'No se pudo cancelar la venta pendiente.');
+            return;
+        }
+
+        closeCancelSaleModal();
+        await loadSummary();
+        await loadSales();
+    }
+
     async function loadSales() {
         const search = document.getElementById('salesSearch').value.trim();
         const date = document.getElementById('salesDate').value;
@@ -312,26 +460,18 @@
             return;
         }
 
-        tbody.innerHTML = items.map(item => {
-            let badge = '<span class="badge badge-blue">Pagada</span>';
-            if (item.status_sale === 'PENDIENTE') badge = '<span class="badge badge-yellow">Pendiente</span>';
-            if (item.status_sale === 'CANCELADA') badge = '<span class="badge badge-red">Cancelada</span>';
-
-            return `
-                <tr>
-                    <td style="font-weight:700; color:#1d4ed8;">${item.sale_folio}</td>
-                    <td>${item.date_time}</td>
-                    <td style="font-weight:600;">${item.customer_name}</td>
-                    <td>${item.items_count} items</td>
-                    <td style="font-weight:700;">${money(item.total)}</td>
-                    <td>${item.payment_method ?? '-'}</td>
-                    <td>${badge}</td>
-                    <td>
-                        <a href="/ventas/${item.sale_id}" class="icon-btn" title="Ver detalle">👁️</a>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+        tbody.innerHTML = items.map(item => `
+            <tr>
+                <td style="font-weight:700; color:#1d4ed8;">${escapeHtml(item.sale_folio)}</td>
+                <td>${escapeHtml(item.date_time)}</td>
+                <td style="font-weight:600;">${escapeHtml(item.customer_name)}</td>
+                <td>${Number(item.items_count)} items</td>
+                <td style="font-weight:700;">${money(item.total)}</td>
+                <td>${escapeHtml(item.payment_method ?? '-')}</td>
+                <td>${getStatusBadge(item.status_sale)}</td>
+                <td>${buildActionButtons(item)}</td>
+            </tr>
+        `).join('');
     }
 
     async function loadPage() {
@@ -348,6 +488,7 @@
         document.getElementById('salesStatus').addEventListener('change', loadSales);
 
         const closePosOverlay = document.getElementById('closePosOverlay');
+        const cancelSaleOverlay = document.getElementById('cancelSaleOverlay');
         const closePosAmount = document.getElementById('closePosAmount');
 
         closePosOverlay.addEventListener('click', function (e) {
@@ -356,9 +497,22 @@
             }
         });
 
+        cancelSaleOverlay.addEventListener('click', function (e) {
+            if (e.target === cancelSaleOverlay) {
+                closeCancelSaleModal();
+            }
+        });
+
         closePosAmount.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') {
                 confirmClosePos();
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                closeClosePosModal();
+                closeCancelSaleModal();
             }
         });
     });

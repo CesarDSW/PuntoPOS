@@ -112,14 +112,14 @@ class PosController extends SalesBaseController
         $limit = (int) ($validated['limit'] ?? 10);
 
         $query = DB::table('customer')
-            ->where('company_idfk', $companyId)
-            ->select([
-                'customer_id',
-                'name_customer',
-                'phone',
-                'email',
-            ]);
-
+    ->where('company_idfk', $companyId)
+    ->where('status_customer', 1)
+    ->select([
+        'customer_id',
+        'name_customer',
+        'phone',
+        'email',
+    ]);
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('name_customer', 'like', "%{$search}%")
@@ -135,4 +135,5 @@ class PosController extends SalesBaseController
 
         return response()->json($customers);
     }
+    
 }

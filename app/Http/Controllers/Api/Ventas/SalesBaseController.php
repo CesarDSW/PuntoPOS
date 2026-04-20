@@ -90,20 +90,21 @@ class SalesBaseController extends Controller
     }
 
     protected function getCustomerOrFail(int $customerId, int $companyId)
-    {
-        $customer = DB::table('customer')
-            ->where('customer_id', $customerId)
-            ->where('company_idfk', $companyId)
-            ->first();
+{
+    $customer = DB::table('customer')
+        ->where('customer_id', $customerId)
+        ->where('company_idfk', $companyId)
+        ->where('status_customer', 1)
+        ->first();
 
-        if (!$customer) {
-            throw ValidationException::withMessages([
-                'customer_id' => ['El cliente no pertenece a la empresa del usuario.'],
-            ]);
-        }
-
-        return $customer;
+    if (!$customer) {
+        throw ValidationException::withMessages([
+            'customer_id' => ['El cliente no existe, no pertenece a la empresa o fue eliminado.'],
+        ]);
     }
+
+    return $customer;
+}
 
     protected function getOrCreateGenericCustomer(int $companyId): object
     {

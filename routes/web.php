@@ -156,6 +156,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/cliente', [CustomerController::class, 'storeCustomers'])->name('customers.store');
         // Ruta para ver el historial del cliente
     Route::get('/cliente/{id}/historial', [CustomerController::class, 'showCustomerHistory'])->name('customers.history');
+// Ruta para ver el detalle de una venta del cliente
+    Route::get('/cliente/{customerId}/ventas/{saleId}', [CustomerController::class, 'showCustomerSaleDetail'])
+    ->whereNumber('customerId')
+    ->whereNumber('saleId')
+    ->name('customers.sales.show');
         // Ruta para editar los clientes
     Route::get('/cliente/{id}/editar', [CustomerController::class, 'editCustomer'])->name('customers.edit');
         // Ruta para actualizar el cliente una vez editado
@@ -197,6 +202,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('api')->group(function () {
         // Contexto de sucursal
         Route::get('/branches', [BranchContextController::class, 'index']);
+        Route::post('/branches', [BranchContextController::class, 'store']);
         Route::get('/branches/current', [BranchContextController::class, 'current']);
         Route::post('/branches/current', [BranchContextController::class, 'update']);
 
@@ -248,6 +254,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/sales/{id}', [SalesController::class, 'show'])->whereNumber('id');
         Route::post('/sales', [SalesController::class, 'store']);
 
+
+// Nuevas rutas para ventas pendientes
+Route::post('/sales/pending', [SalesController::class, 'storePending']);
+Route::post('/sales/{id}/confirm', [SalesController::class, 'confirmPending'])->whereNumber('id');
+Route::post('/sales/{id}/cancel', [SalesController::class, 'cancelPending'])->whereNumber('id');
         // POS
         Route::get('/sales/pos/status', [PosController::class, 'status']);
         Route::get('/sales/pos/products', [PosController::class, 'products']);

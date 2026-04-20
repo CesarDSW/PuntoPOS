@@ -307,7 +307,8 @@ class PaymentController extends SalesBaseController
             ->join('sale as s', 's.sale_id', '=', 'p.sale_idfk')
             ->join('customer as c', 'c.customer_id', '=', 'p.customer_idfk')
             ->where('s.company_idfk', $companyId)
-            ->where('s.branch_idfk', $branchId);
+            ->where('s.branch_idfk', $branchId)
+            ->where('c.status_customer', 1);
     }
 
     private function resolvePaymentsBranchId(Request $request, int $companyId): int

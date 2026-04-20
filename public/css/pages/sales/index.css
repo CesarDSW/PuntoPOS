@@ -1,7 +1,7 @@
 .sales-wrap { display:flex; flex-direction:column; gap:18px; }
 .sales-header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
 .sales-actions { display:flex; gap:10px; flex-wrap:wrap; }
-.btn-primary { background:#1d4ed8; color:#fff; border-color:#1d4ed8; text-decoration:none; display:inline-flex; align-items:center; }
+.btn-primary { background:#1d4ed8; color:#fff; border-color:#1d4ed8; text-decoration:none; display:flex; align-items:center; }
 .btn-dark { background:#0f172a; color:#fff; border-color:#0f172a; text-decoration:none; display:inline-flex; align-items:center; }
 
 .summary-grid {

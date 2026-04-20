@@ -30,6 +30,7 @@ class SalesController extends SalesBaseController
         $todaySales = DB::table('sale')
             ->where('company_idfk', $companyId)
             ->where('branch_idfk', $branchId)
+            ->where('status_sale', 'PAGADA')
             ->whereDate('date_time', $today);
 
         $totalSoldToday = (float) (clone $todaySales)->sum('total');
@@ -38,6 +39,7 @@ class SalesController extends SalesBaseController
         $salesLast24 = (int) DB::table('sale')
             ->where('company_idfk', $companyId)
             ->where('branch_idfk', $branchId)
+            ->where('status_sale', 'PAGADA')
             ->where('date_time', '>=', $last24)
             ->count();
 
@@ -82,7 +84,7 @@ class SalesController extends SalesBaseController
             ->groupBy('sale_idfk');
 
         $query = DB::table('sale as s')
-            ->join('customer as c', 'c.customer_id', '=', 's.customer_idfk')
+            ->leftJoin('customer as c', 'c.customer_id', '=', 's.customer_idfk')
             ->leftJoin('payments as p', 'p.sale_idfk', '=', 's.sale_id')
             ->leftJoinSub($itemsSub, 'si', function ($join) {
                 $join->on('si.sale_idfk', '=', 's.sale_id');
@@ -115,7 +117,7 @@ class SalesController extends SalesBaseController
 
                 if ($digits !== '') {
                     $q->orWhere('s.sale_id', (int) $digits)
-                      ->orWhereRaw("CONCAT('V-', LPAD(s.sale_id, 5, '0')) LIKE ?", ["%{$search}%"]);
+                        ->orWhereRaw("CONCAT('V-', LPAD(s.sale_id, 5, '0')) LIKE ?", ["%{$search}%"]);
                 }
             });
         }
@@ -129,7 +131,7 @@ class SalesController extends SalesBaseController
                 'sale_id' => (int) $row->sale_id,
                 'sale_folio' => $this->formatSaleFolio((int) $row->sale_id),
                 'date_time' => $row->date_time,
-                'customer_name' => $row->name_customer,
+                'customer_name' => $row->name_customer ?: 'Cliente general',
                 'items_count' => (int) $row->items_count,
                 'total' => (float) $row->total,
                 'payment_method' => $row->payment_method,
@@ -156,7 +158,7 @@ class SalesController extends SalesBaseController
         }
 
         $sale = DB::table('sale as s')
-            ->join('customer as c', 'c.customer_id', '=', 's.customer_idfk')
+            ->leftJoin('customer as c', 'c.customer_id', '=', 's.customer_idfk')
             ->join('branch as b', 'b.branch_id', '=', 's.branch_idfk')
             ->join('userr as u', 'u.userr_id', '=', 's.cashier_userr_idfk')
             ->leftJoin('payments as p', 'p.sale_idfk', '=', 's.sale_id')
@@ -240,8 +242,8 @@ class SalesController extends SalesBaseController
             'total' => (float) $sale->total,
             'status_sale' => $sale->status_sale,
             'customer' => [
-                'customer_id' => (int) $sale->customer_id,
-                'name_customer' => $sale->name_customer,
+                'customer_id' => $sale->customer_id ? (int) $sale->customer_id : null,
+                'name_customer' => $sale->name_customer ?: 'Cliente general',
                 'phone' => $sale->phone,
                 'email' => $sale->email,
             ],
@@ -292,11 +294,7 @@ class SalesController extends SalesBaseController
         }
 
         $this->getBranchOrFail($branchId, $companyId);
-
-        // Caja única por empresa
         $this->ensureOpenCashSessionOrFail($companyId);
-
-        // Turno del usuario actual
         $this->ensureOpenShiftOrFail($companyId, $branchId, $userId);
 
         $paymentMethod = $this->normalizePaymentMethod($validated['payment_method']);
@@ -308,7 +306,6 @@ class SalesController extends SalesBaseController
         }
 
         $items = $validated['items'];
-
         $productIds = collect($items)->pluck('product_id')->all();
         $duplicates = collect($productIds)->duplicates()->values()->all();
 
@@ -329,90 +326,19 @@ class SalesController extends SalesBaseController
                 $paymentMethod,
                 $validated
             ) {
-                $products = DB::table('productt')
-                    ->where('company_idfk', $companyId)
-                    ->whereIn('product_id', $productIds)
-                    ->get()
-                    ->keyBy('product_id');
+                $processed = $this->prepareSaleItems(
+                    $companyId,
+                    $branchId,
+                    $items,
+                    true
+                );
 
-                foreach ($items as $index => $item) {
-                    if (!isset($products[$item['product_id']])) {
-                        throw ValidationException::withMessages([
-                            "items.$index.product_id" => ['El producto no pertenece a la empresa del usuario.'],
-                        ]);
-                    }
-                }
-
-                $stockRows = DB::table('branch_product_stock')
-                    ->where('branch_idfk', $branchId)
-                    ->whereIn('product_idfk', $productIds)
-                    ->lockForUpdate()
-                    ->get()
-                    ->keyBy('product_idfk');
-
-                $processedItems = [];
-                $subtotal = 0.00;
-
-                foreach ($items as $index => $item) {
-                    $productId = (int) $item['product_id'];
-                    $quantity = (int) $item['quantity'];
-
-                    if (!isset($stockRows[$productId])) {
-                        throw ValidationException::withMessages([
-                            "items.$index.product_id" => ['No existe stock registrado para ese producto en la sucursal actual.'],
-                        ]);
-                    }
-
-                    $stockRow = $stockRows[$productId];
-                    $product = $products[$productId];
-
-                    if ((int) $stockRow->status_stock !== 1 || (int) $product->status_product !== 1) {
-                        throw ValidationException::withMessages([
-                            "items.$index.product_id" => ['El producto no está activo para venta.'],
-                        ]);
-                    }
-
-                    $currentStock = (int) $stockRow->stocks;
-                    $newStock = $currentStock - $quantity;
-
-                    if ($newStock < 0) {
-                        throw ValidationException::withMessages([
-                            "items.$index.quantity" => ['La cantidad solicitada supera el stock disponible.'],
-                        ]);
-                    }
-
-                    $lineSubtotal = round((float) $product->price * $quantity, 2);
-                    $subtotal += $lineSubtotal;
-
-                    $processedItems[] = [
-                        'product_id' => $productId,
-                        'product_name' => $product->name_product,
-                        'quantity' => $quantity,
-                        'unit_price' => (float) $product->price,
-                        'line_subtotal' => $lineSubtotal,
-                        'previous_stock' => $currentStock,
-                        'new_stock' => $newStock,
-                    ];
-                }
-
-                $discount = 0.00;
-                $iva = round(($subtotal - $discount) * self::TAX_RATE, 2);
-                $total = round(($subtotal - $discount) + $iva, 2);
-
-                if ($paymentMethod === 'EFECTIVO') {
-                    $amountPaid = round((float) ($validated['amount_paid'] ?? 0), 2);
-
-                    if ($amountPaid < $total) {
-                        throw ValidationException::withMessages([
-                            'amount_paid' => ['El monto recibido es menor al total de la venta.'],
-                        ]);
-                    }
-
-                    $changeGiven = round($amountPaid - $total, 2);
-                } else {
-                    $amountPaid = $total;
-                    $changeGiven = 0.00;
-                }
+                $totals = $this->calculateSaleTotals(
+                    $processed['subtotal'],
+                    $paymentMethod,
+                    $validated,
+                    true
+                );
 
                 $saleId = DB::table('sale')->insertGetId([
                     'date_time' => now(),
@@ -420,76 +346,51 @@ class SalesController extends SalesBaseController
                     'branch_idfk' => $branchId,
                     'cashier_userr_idfk' => $userId,
                     'customer_idfk' => $customer->customer_id,
-                    'subtotal' => $subtotal,
-                    'discount' => $discount,
-                    'total' => $total,
+                    'subtotal' => $totals['subtotal'],
+                    'discount' => $totals['discount'],
+                    'total' => $totals['total'],
                     'status_sale' => 'PAGADA',
                 ]);
 
-                foreach ($processedItems as $item) {
-                    DB::table('saleitem')->insert([
-                        'sale_idfk' => $saleId,
-                        'item_type' => 'PRODUCTO',
-                        'product_idfk' => $item['product_id'],
-                        'service_idfk' => null,
-                        'amount' => $item['quantity'],
-                        'unit_price' => $item['unit_price'],
-                        'discount' => 0,
-                        'total_line' => $item['line_subtotal'],
-                    ]);
-
-                    DB::table('branch_product_stock')
-                        ->where('branch_idfk', $branchId)
-                        ->where('product_idfk', $item['product_id'])
-                        ->update([
-                            'stocks' => $item['new_stock'],
-                        ]);
-                }
-
-                DB::table('payments')->insert([
-                    'date_time' => now(),
-                    'payment_method' => $paymentMethod,
-                    'status_payment' => 'PAGADO',
-                    'commission' => 0,
-                    'amount_paid' => $amountPaid,
-                    'change_given' => $changeGiven,
-                    'reference_payment' => $validated['reference_payment'] ?? null,
-                    'sale_idfk' => $saleId,
-                    'customer_idfk' => $customer->customer_id,
-                ]);
-
-                $movementId = DB::table('inventory_movement')->insertGetId([
-                    'date_time' => now(),
-                    'type_invmov' => 'SALIDA',
-                    'reason_invmov' => 'Venta ' . $this->formatSaleFolio($saleId),
-                    'company_idfk' => $companyId,
-                    'origin_branch_idfk' => $branchId,
-                    'destination_branch_idfk' => null,
-                    'userr_idfk' => $userId,
-                ]);
-
-                foreach ($processedItems as $item) {
-                    DB::table('inventory_movement_item')->insert([
-                        'invmov_idfk' => $movementId,
-                        'product_idfk' => $item['product_id'],
-                        'amount' => $item['quantity'],
-                        'previous_stock' => $item['previous_stock'],
-                        'new_stock' => $item['new_stock'],
-                    ]);
-                }
+                $this->replaceSaleItems($saleId, $processed['items']);
+                $this->applyStockChanges($branchId, $processed['items']);
+                $this->upsertPayment(
+                    $saleId,
+                    $customer->customer_id,
+                    $paymentMethod,
+                    'PAGADO',
+                    $validated['reference_payment'] ?? null,
+                    $totals['amount_paid'],
+                    $totals['change_given']
+                );
+                $this->registerInventoryMovement(
+                    $companyId,
+                    $branchId,
+                    $userId,
+                    $saleId,
+                    $processed['items']
+                );
 
                 return [
                     'sale_id' => $saleId,
                     'sale_folio' => $this->formatSaleFolio($saleId),
-                    'subtotal' => $subtotal,
-                    'discount' => $discount,
-                    'iva' => $iva,
-                    'total' => $total,
+                    'subtotal' => $totals['subtotal'],
+                    'discount' => $totals['discount'],
+                    'iva' => $totals['iva'],
+                    'total' => $totals['total'],
                     'payment_method' => $paymentMethod,
-                    'amount_paid' => $amountPaid,
-                    'change_given' => $changeGiven,
-                    'items_count' => count($processedItems),
-                    'items' => $processedItems,
+                    'amount_paid' => $totals['amount_paid'],
+                    'change_given' => $totals['change_given'],
+                    'items_count' => count($processed['items']),
+                    'items' => collect($processed['items'])->map(function ($item) {
+                        return [
+                            'product_id' => $item['product_id'],
+                            'product_name' => $item['product_name'],
+                            'quantity' => $item['quantity'],
+                            'unit_price' => $item['unit_price'],
+                            'line_subtotal' => $item['line_subtotal'],
+                        ];
+                    })->values()->all(),
                 ];
             });
 
@@ -505,6 +406,604 @@ class SalesController extends SalesBaseController
             return response()->json([
                 'message' => 'No se pudo registrar la venta.',
             ], 422);
+        }
+    }
+
+    public function storePending(Request $request)
+    {
+        $validated = $request->validate([
+            'sale_id' => ['nullable', 'integer'],
+            'branch_id' => ['nullable', 'integer', 'exists:branch,branch_id'],
+            'customer_id' => ['nullable', 'integer', 'exists:customer,customer_id'],
+            'payment_method' => ['required', 'string'],
+            'amount_paid' => ['nullable', 'numeric', 'min:0'],
+            'reference_payment' => ['nullable', 'string', 'max:100'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', 'integer', 'exists:productt,product_id'],
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $companyId = $this->getCompanyId();
+        $userId = $this->getUserId();
+
+        $branchId = $this->resolveBranchId(
+            isset($validated['branch_id']) ? (int) $validated['branch_id'] : null,
+            $companyId
+        );
+
+        if (!$branchId) {
+            throw ValidationException::withMessages([
+                'branch_id' => ['Debes tener una sucursal seleccionada.'],
+            ]);
+        }
+
+        $this->getBranchOrFail($branchId, $companyId);
+        $this->ensureOpenCashSessionOrFail($companyId);
+        $this->ensureOpenShiftOrFail($companyId, $branchId, $userId);
+
+        $paymentMethod = $this->normalizePaymentMethod($validated['payment_method']);
+
+        if (isset($validated['customer_id'])) {
+            $customer = $this->getCustomerOrFail((int) $validated['customer_id'], $companyId);
+        } else {
+            $customer = $this->getOrCreateGenericCustomer($companyId);
+        }
+
+        $items = $validated['items'];
+        $productIds = collect($items)->pluck('product_id')->all();
+        $duplicates = collect($productIds)->duplicates()->values()->all();
+
+        if (!empty($duplicates)) {
+            throw ValidationException::withMessages([
+                'items' => ['No puedes repetir productos en la misma venta.'],
+            ]);
+        }
+
+        try {
+            $result = DB::transaction(function () use (
+                $validated,
+                $companyId,
+                $branchId,
+                $userId,
+                $customer,
+                $paymentMethod,
+                $items
+            ) {
+                $existingSale = null;
+
+                if (!empty($validated['sale_id'])) {
+                    $existingSale = DB::table('sale')
+                        ->where('sale_id', (int) $validated['sale_id'])
+                        ->where('company_idfk', $companyId)
+                        ->where('branch_idfk', $branchId)
+                        ->first();
+
+                    if (!$existingSale) {
+                        throw ValidationException::withMessages([
+                            'sale' => ['La venta pendiente no existe en la sucursal actual.'],
+                        ]);
+                    }
+
+                    if ($existingSale->status_sale !== 'PENDIENTE') {
+                        throw ValidationException::withMessages([
+                            'sale' => ['Solo se pueden actualizar ventas pendientes.'],
+                        ]);
+                    }
+
+                    if ((int) $existingSale->cashier_userr_idfk !== $userId) {
+                        throw ValidationException::withMessages([
+                            'sale' => ['No puedes modificar una venta pendiente de otro usuario.'],
+                        ]);
+                    }
+                }
+
+                $processed = $this->prepareSaleItems(
+                    $companyId,
+                    $branchId,
+                    $items,
+                    false
+                );
+
+                $totals = $this->calculateSaleTotals(
+                    $processed['subtotal'],
+                    $paymentMethod,
+                    $validated,
+                    false
+                );
+
+                if ($existingSale) {
+                    DB::table('sale')
+                        ->where('sale_id', $existingSale->sale_id)
+                        ->update([
+                            'customer_idfk' => $customer->customer_id,
+                            'subtotal' => $totals['subtotal'],
+                            'discount' => $totals['discount'],
+                            'total' => $totals['total'],
+                            'status_sale' => 'PENDIENTE',
+                        ]);
+
+                    $saleId = (int) $existingSale->sale_id;
+
+                    DB::table('saleitem')
+                        ->where('sale_idfk', $saleId)
+                        ->delete();
+                } else {
+                    $saleId = DB::table('sale')->insertGetId([
+                        'date_time' => now(),
+                        'company_idfk' => $companyId,
+                        'branch_idfk' => $branchId,
+                        'cashier_userr_idfk' => $userId,
+                        'customer_idfk' => $customer->customer_id,
+                        'subtotal' => $totals['subtotal'],
+                        'discount' => $totals['discount'],
+                        'total' => $totals['total'],
+                        'status_sale' => 'PENDIENTE',
+                    ]);
+                }
+
+                $this->replaceSaleItems($saleId, $processed['items']);
+                $this->upsertPayment(
+                    $saleId,
+                    $customer->customer_id,
+                    $paymentMethod,
+                    'PENDIENTE',
+                    $validated['reference_payment'] ?? null,
+                    $totals['amount_paid'],
+                    $totals['change_given']
+                );
+
+                return [
+                    'sale_id' => $saleId,
+                    'sale_folio' => $this->formatSaleFolio($saleId),
+                    'status_sale' => 'PENDIENTE',
+                    'subtotal' => $totals['subtotal'],
+                    'discount' => $totals['discount'],
+                    'iva' => $totals['iva'],
+                    'total' => $totals['total'],
+                    'payment_method' => $paymentMethod,
+                    'amount_paid' => $totals['amount_paid'],
+                    'change_given' => $totals['change_given'],
+                    'items_count' => count($processed['items']),
+                    'items' => collect($processed['items'])->map(function ($item) {
+                        return [
+                            'product_id' => $item['product_id'],
+                            'product_name' => $item['product_name'],
+                            'quantity' => $item['quantity'],
+                            'unit_price' => $item['unit_price'],
+                            'line_subtotal' => $item['line_subtotal'],
+                        ];
+                    })->values()->all(),
+                ];
+            });
+
+            return response()->json([
+                'message' => 'Venta pendiente guardada correctamente.',
+                'data' => $result,
+            ], 201);
+        } catch (Throwable $e) {
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+
+            return response()->json([
+                'message' => 'No se pudo preparar la venta pendiente.',
+            ], 422);
+        }
+    }
+
+    public function confirmPending(Request $request, int $id)
+    {
+        $validated = $request->validate([
+            'branch_id' => ['nullable', 'integer', 'exists:branch,branch_id'],
+            'customer_id' => ['nullable', 'integer', 'exists:customer,customer_id'],
+            'payment_method' => ['required', 'string'],
+            'amount_paid' => ['nullable', 'numeric', 'min:0'],
+            'reference_payment' => ['nullable', 'string', 'max:100'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', 'integer', 'exists:productt,product_id'],
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $companyId = $this->getCompanyId();
+        $userId = $this->getUserId();
+
+        $branchId = $this->resolveBranchId(
+            isset($validated['branch_id']) ? (int) $validated['branch_id'] : null,
+            $companyId
+        );
+
+        if (!$branchId) {
+            throw ValidationException::withMessages([
+                'branch_id' => ['Debes tener una sucursal seleccionada.'],
+            ]);
+        }
+
+        $this->getBranchOrFail($branchId, $companyId);
+        $this->ensureOpenCashSessionOrFail($companyId);
+        $this->ensureOpenShiftOrFail($companyId, $branchId, $userId);
+
+        $paymentMethod = $this->normalizePaymentMethod($validated['payment_method']);
+
+        if (isset($validated['customer_id'])) {
+            $customer = $this->getCustomerOrFail((int) $validated['customer_id'], $companyId);
+        } else {
+            $customer = $this->getOrCreateGenericCustomer($companyId);
+        }
+
+        $items = $validated['items'];
+        $productIds = collect($items)->pluck('product_id')->all();
+        $duplicates = collect($productIds)->duplicates()->values()->all();
+
+        if (!empty($duplicates)) {
+            throw ValidationException::withMessages([
+                'items' => ['No puedes repetir productos en la misma venta.'],
+            ]);
+        }
+
+        try {
+            $result = DB::transaction(function () use (
+                $id,
+                $validated,
+                $companyId,
+                $branchId,
+                $userId,
+                $customer,
+                $paymentMethod,
+                $items
+            ) {
+                $sale = DB::table('sale')
+                    ->where('sale_id', $id)
+                    ->where('company_idfk', $companyId)
+                    ->where('branch_idfk', $branchId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$sale) {
+                    throw ValidationException::withMessages([
+                        'sale' => ['La venta no existe en la sucursal actual.'],
+                    ]);
+                }
+
+                if ($sale->status_sale !== 'PENDIENTE') {
+                    throw ValidationException::withMessages([
+                        'sale' => ['Solo puedes confirmar ventas pendientes.'],
+                    ]);
+                }
+
+                if ((int) $sale->cashier_userr_idfk !== $userId) {
+                    throw ValidationException::withMessages([
+                        'sale' => ['No puedes confirmar una venta pendiente de otro usuario.'],
+                    ]);
+                }
+
+                $processed = $this->prepareSaleItems(
+                    $companyId,
+                    $branchId,
+                    $items,
+                    true
+                );
+
+                $totals = $this->calculateSaleTotals(
+                    $processed['subtotal'],
+                    $paymentMethod,
+                    $validated,
+                    true
+                );
+
+                DB::table('sale')
+                    ->where('sale_id', $id)
+                    ->update([
+                        'customer_idfk' => $customer->customer_id,
+                        'subtotal' => $totals['subtotal'],
+                        'discount' => $totals['discount'],
+                        'total' => $totals['total'],
+                        'status_sale' => 'PAGADA',
+                    ]);
+
+                DB::table('saleitem')
+                    ->where('sale_idfk', $id)
+                    ->delete();
+
+                $this->replaceSaleItems($id, $processed['items']);
+                $this->applyStockChanges($branchId, $processed['items']);
+                $this->upsertPayment(
+                    $id,
+                    $customer->customer_id,
+                    $paymentMethod,
+                    'PAGADO',
+                    $validated['reference_payment'] ?? null,
+                    $totals['amount_paid'],
+                    $totals['change_given']
+                );
+                $this->registerInventoryMovement(
+                    $companyId,
+                    $branchId,
+                    $userId,
+                    $id,
+                    $processed['items']
+                );
+
+                return [
+                    'sale_id' => $id,
+                    'sale_folio' => $this->formatSaleFolio($id),
+                    'subtotal' => $totals['subtotal'],
+                    'discount' => $totals['discount'],
+                    'iva' => $totals['iva'],
+                    'total' => $totals['total'],
+                    'payment_method' => $paymentMethod,
+                    'amount_paid' => $totals['amount_paid'],
+                    'change_given' => $totals['change_given'],
+                    'items_count' => count($processed['items']),
+                    'items' => collect($processed['items'])->map(function ($item) {
+                        return [
+                            'product_id' => $item['product_id'],
+                            'product_name' => $item['product_name'],
+                            'quantity' => $item['quantity'],
+                            'unit_price' => $item['unit_price'],
+                            'line_subtotal' => $item['line_subtotal'],
+                        ];
+                    })->values()->all(),
+                ];
+            });
+
+            return response()->json([
+                'message' => 'Venta confirmada correctamente.',
+                'data' => $result,
+            ]);
+        } catch (Throwable $e) {
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+
+            return response()->json([
+                'message' => 'No se pudo confirmar la venta pendiente.',
+            ], 422);
+        }
+    }
+
+    public function cancelPending(int $id)
+    {
+        $companyId = $this->getCompanyId();
+        $userId = $this->getUserId();
+
+        $sale = DB::table('sale')
+            ->where('sale_id', $id)
+            ->where('company_idfk', $companyId)
+            ->first();
+
+        if (!$sale) {
+            throw ValidationException::withMessages([
+                'sale' => ['La venta no existe o no pertenece a tu empresa.'],
+            ]);
+        }
+
+        if ($sale->status_sale !== 'PENDIENTE') {
+            throw ValidationException::withMessages([
+                'sale' => ['Solo se pueden cancelar ventas pendientes.'],
+            ]);
+        }
+
+        if ((int) $sale->cashier_userr_idfk !== $userId) {
+            throw ValidationException::withMessages([
+                'sale' => ['No puedes cancelar una venta pendiente de otro usuario.'],
+            ]);
+        }
+
+        DB::table('sale')
+            ->where('sale_id', $id)
+            ->update([
+                'status_sale' => 'CANCELADA',
+            ]);
+
+        DB::table('payments')
+            ->where('sale_idfk', $id)
+            ->update([
+                'status_payment' => 'CANCELADO',
+            ]);
+
+        return response()->json([
+            'message' => 'Venta cancelada correctamente.',
+            'sale_id' => $id,
+        ]);
+    }
+
+    private function prepareSaleItems(int $companyId, int $branchId, array $items, bool $lockStock): array
+    {
+        $productIds = collect($items)->pluck('product_id')->all();
+
+        $products = DB::table('productt')
+            ->where('company_idfk', $companyId)
+            ->whereIn('product_id', $productIds)
+            ->get()
+            ->keyBy('product_id');
+
+        $stockQuery = DB::table('branch_product_stock')
+            ->where('branch_idfk', $branchId)
+            ->whereIn('product_idfk', $productIds);
+
+        if ($lockStock) {
+            $stockQuery->lockForUpdate();
+        }
+
+        $stockRows = $stockQuery->get()->keyBy('product_idfk');
+
+        $processedItems = [];
+        $subtotal = 0.00;
+
+        foreach ($items as $index => $item) {
+            $productId = (int) $item['product_id'];
+            $quantity = (int) $item['quantity'];
+
+            if (!isset($products[$productId])) {
+                throw ValidationException::withMessages([
+                    "items.$index.product_id" => ['El producto no pertenece a la empresa del usuario.'],
+                ]);
+            }
+
+            if (!isset($stockRows[$productId])) {
+                throw ValidationException::withMessages([
+                    "items.$index.product_id" => ['No existe stock registrado para ese producto en la sucursal actual.'],
+                ]);
+            }
+
+            $product = $products[$productId];
+            $stockRow = $stockRows[$productId];
+
+            if ((int) $product->status_product !== 1 || (int) $stockRow->status_stock !== 1) {
+                throw ValidationException::withMessages([
+                    "items.$index.product_id" => ['El producto no está activo para venta.'],
+                ]);
+            }
+
+            $currentStock = (int) $stockRow->stocks;
+            $newStock = $currentStock - $quantity;
+
+            if ($newStock < 0) {
+                throw ValidationException::withMessages([
+                    "items.$index.quantity" => ['La cantidad solicitada supera el stock disponible.'],
+                ]);
+            }
+
+            $lineSubtotal = round((float) $product->price * $quantity, 2);
+            $subtotal += $lineSubtotal;
+
+            $processedItems[] = [
+                'product_id' => $productId,
+                'product_name' => $product->name_product,
+                'quantity' => $quantity,
+                'unit_price' => (float) $product->price,
+                'line_subtotal' => $lineSubtotal,
+                'previous_stock' => $currentStock,
+                'new_stock' => $newStock,
+            ];
+        }
+
+        return [
+            'items' => $processedItems,
+            'subtotal' => round($subtotal, 2),
+        ];
+    }
+
+    private function calculateSaleTotals(float $subtotal, string $paymentMethod, array $validated, bool $requireFullPayment): array
+    {
+        $discount = 0.00;
+        $iva = round(($subtotal - $discount) * self::TAX_RATE, 2);
+        $total = round(($subtotal - $discount) + $iva, 2);
+
+        if ($paymentMethod === 'EFECTIVO') {
+            $amountPaid = round((float) ($validated['amount_paid'] ?? 0), 2);
+
+            if ($requireFullPayment && $amountPaid < $total) {
+                throw ValidationException::withMessages([
+                    'amount_paid' => ['El monto recibido es menor al total de la venta.'],
+                ]);
+            }
+
+            $changeGiven = $amountPaid > $total
+                ? round($amountPaid - $total, 2)
+                : 0.00;
+        } else {
+            $amountPaid = $requireFullPayment ? $total : 0.00;
+            $changeGiven = 0.00;
+        }
+
+        return [
+            'subtotal' => round($subtotal, 2),
+            'discount' => $discount,
+            'iva' => $iva,
+            'total' => $total,
+            'amount_paid' => $amountPaid,
+            'change_given' => $changeGiven,
+        ];
+    }
+
+    private function replaceSaleItems(int $saleId, array $items): void
+    {
+        foreach ($items as $item) {
+            DB::table('saleitem')->insert([
+                'sale_idfk' => $saleId,
+                'item_type' => 'PRODUCTO',
+                'product_idfk' => $item['product_id'],
+                'service_idfk' => null,
+                'amount' => $item['quantity'],
+                'unit_price' => $item['unit_price'],
+                'discount' => 0,
+                'total_line' => $item['line_subtotal'],
+            ]);
+        }
+    }
+
+    private function applyStockChanges(int $branchId, array $items): void
+    {
+        foreach ($items as $item) {
+            DB::table('branch_product_stock')
+                ->where('branch_idfk', $branchId)
+                ->where('product_idfk', $item['product_id'])
+                ->update([
+                    'stocks' => $item['new_stock'],
+                ]);
+        }
+    }
+
+    private function upsertPayment(
+        int $saleId,
+        int $customerId,
+        string $paymentMethod,
+        string $statusPayment,
+        ?string $referencePayment,
+        float $amountPaid,
+        float $changeGiven
+    ): void {
+        $existingPayment = DB::table('payments')
+            ->where('sale_idfk', $saleId)
+            ->first();
+
+        $data = [
+            'date_time' => now(),
+            'payment_method' => $paymentMethod,
+            'status_payment' => $statusPayment,
+            'commission' => 0,
+            'amount_paid' => $amountPaid,
+            'change_given' => $changeGiven,
+            'reference_payment' => $referencePayment,
+            'sale_idfk' => $saleId,
+            'customer_idfk' => $customerId,
+        ];
+
+        if ($existingPayment) {
+            DB::table('payments')
+                ->where('payment_id', $existingPayment->payment_id)
+                ->update($data);
+        } else {
+            DB::table('payments')->insert($data);
+        }
+    }
+
+    private function registerInventoryMovement(
+        int $companyId,
+        int $branchId,
+        int $userId,
+        int $saleId,
+        array $items
+    ): void {
+        $movementId = DB::table('inventory_movement')->insertGetId([
+            'date_time' => now(),
+            'type_invmov' => 'SALIDA',
+            'reason_invmov' => 'Venta ' . $this->formatSaleFolio($saleId),
+            'company_idfk' => $companyId,
+            'origin_branch_idfk' => $branchId,
+            'destination_branch_idfk' => null,
+            'userr_idfk' => $userId,
+        ]);
+
+        foreach ($items as $item) {
+            DB::table('inventory_movement_item')->insert([
+                'invmov_idfk' => $movementId,
+                'product_idfk' => $item['product_id'],
+                'amount' => $item['quantity'],
+                'previous_stock' => $item['previous_stock'],
+                'new_stock' => $item['new_stock'],
+            ]);
         }
     }
 }

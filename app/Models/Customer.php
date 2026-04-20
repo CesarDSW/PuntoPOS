@@ -10,11 +10,11 @@ class Customer extends Model
     protected $primaryKey = 'customer_id';
     public $timestamps = false;
 
-    protected $fillable = [
-        'customer_code',
+     protected $fillable = [
         'name_customer',
         'phone',
         'email',
         'company_idfk',
+        'status_customer',
     ];
 }

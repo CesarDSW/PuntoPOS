@@ -23,6 +23,7 @@ class CustomerController extends Controller
     {
         return Customer::where('company_idfk', $companyId)
             ->where('customer_id', $customerId)
+            ->where('status_customer', 1)
             ->firstOrFail();
     }
 
@@ -45,6 +46,7 @@ class CustomerController extends Controller
                 $join->on('customer.customer_id', '=', 'sales_resume.customer_idfk');
             })
             ->where('customer.company_idfk', $companyId)
+            ->where('customer.status_customer', 1)
             ->select('customer.*')
             ->selectRaw('COALESCE(sales_resume.total_spent, 0) AS total_spent')
             ->selectRaw('COALESCE(sales_resume.purchases_count, 0) AS purchases_count')
@@ -79,7 +81,9 @@ class CustomerController extends Controller
                 'email',
                 'max:320',
                 Rule::unique('customer', 'email')->where(function ($query) use ($companyId) {
-                    return $query->where('company_idfk', $companyId);
+                    return $query
+                        ->where('company_idfk', $companyId)
+                        ->where('status_customer', 1);
                 }),
             ],
         ]);
@@ -90,6 +94,7 @@ class CustomerController extends Controller
                 'phone' => $validated['phone'],
                 'email' => $validated['email'],
                 'company_idfk' => $companyId,
+                'status_customer' => 1,
             ]);
 
             return redirect()->route('customers')->with('success', 'Cliente registrado correctamente.');
@@ -226,7 +231,9 @@ class CustomerController extends Controller
                 Rule::unique('customer', 'email')
                     ->ignore($customer->customer_id, 'customer_id')
                     ->where(function ($query) use ($companyId) {
-                        return $query->where('company_idfk', $companyId);
+                        return $query
+                            ->where('company_idfk', $companyId)
+                            ->where('status_customer', 1);
                     }),
             ],
         ]);
@@ -252,19 +259,10 @@ class CustomerController extends Controller
         $companyId = (int) $user->company_idfk;
         $customer = $this->getCompanyCustomerOrFail((int) $id, $companyId);
 
-        $hasSales = DB::table('sale')
-            ->where('company_idfk', $companyId)
-            ->where('customer_idfk', $customer->customer_id)
-            ->exists();
-
-        if ($hasSales) {
-            return redirect()->route('customers')->withErrors([
-                'error' => 'No se puede eliminar el cliente porque ya tiene ventas registradas.'
-            ]);
-        }
-
         try {
-            $customer->delete();
+            $customer->update([
+                'status_customer' => 0,
+            ]);
 
             return redirect()->route('customers')->with('success', 'Cliente eliminado correctamente.');
         } catch (\Exception $e) {

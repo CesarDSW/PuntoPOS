@@ -2,205 +2,11 @@
 
 @section('title', 'Catálogo')
 
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('css/pages/catalog/index.css') }}">
+@endpush
+
 @section('content')
-<style>
-    .catalog-wrap { display: flex; flex-direction: column; gap: 18px; }
-    .catalog-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-    .catalog-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-    .btn-primary { background: #1d4ed8; color: white; border-color: #1d4ed8; }
-    .btn-danger { background: #dc2626; color: white; border-color: #dc2626; }
-    .btn-warning { background: #f59e0b; color: white; border-color: #f59e0b; }
-
-    .summary-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 16px;
-    }
-
-    .summary-card {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 14px;
-        padding: 18px;
-    }
-
-    .summary-label { font-size: 13px; color: #6b7280; margin-bottom: 8px; }
-    .summary-value { font-size: 30px; font-weight: bold; }
-
-    .filters-card {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 14px;
-        padding: 16px;
-        display: grid;
-        grid-template-columns: 1.4fr 1fr 1fr 1fr;
-        gap: 12px;
-    }
-
-    .input, .select, .textarea {
-        width: 100%;
-        border: 1px solid #d1d5db;
-        border-radius: 10px;
-        padding: 10px 12px;
-        background: white;
-        font-size: 14px;
-    }
-
-    .textarea { min-height: 100px; resize: vertical; }
-
-    .card {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 14px;
-        overflow: hidden;
-    }
-
-    .card-head { padding: 18px; border-bottom: 1px solid #e5e7eb; }
-    .card-title { font-size: 22px; font-weight: bold; margin-bottom: 6px; }
-    .card-subtitle { color: #6b7280; font-size: 14px; }
-
-    table { width: 100%; border-collapse: collapse; }
-
-    th, td {
-        padding: 14px 16px;
-        border-bottom: 1px solid #e5e7eb;
-        text-align: left;
-        font-size: 14px;
-        vertical-align: middle;
-    }
-
-    th {
-        font-size: 12px;
-        color: #6b7280;
-        background: #f9fafb;
-        text-transform: uppercase;
-    }
-
-    .badge {
-        display: inline-block;
-        padding: 5px 10px;
-        border-radius: 999px;
-        font-size: 12px;
-        border: 1px solid transparent;
-    }
-
-    .badge-blue { background: #eef2ff; color: #1d4ed8; }
-    .badge-green { background: #dcfce7; color: #166534; }
-    .badge-red { background: #fee2e2; color: #b91c1c; }
-    .badge-yellow { background: #fef3c7; color: #92400e; }
-
-    .table-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-
-    .modal {
-        position: fixed;
-        inset: 0;
-        background: rgba(15, 23, 42, 0.35);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        z-index: 1000;
-    }
-
-    .modal.show { display: flex; }
-
-    .modal-box {
-        width: 100%;
-        max-width: 760px;
-        max-height: 90vh;
-        overflow: auto;
-        background: white;
-        border-radius: 16px;
-        border: 1px solid #e5e7eb;
-    }
-
-    .modal-header {
-        padding: 18px 20px;
-        border-bottom: 1px solid #e5e7eb;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 12px;
-    }
-
-    .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
-    .modal-subtitle { font-size: 14px; color: #6b7280; }
-
-    .modal-body {
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-    }
-
-    .modal-footer {
-        padding: 18px 20px;
-        border-top: 1px solid #e5e7eb;
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-    }
-
-    .form-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 14px;
-    }
-
-    .field-group {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-    .field-label {
-        font-size: 14px;
-        font-weight: 600;
-    }
-
-    .error-box {
-        background: #fee2e2;
-        color: #991b1b;
-        border: 1px solid #fecaca;
-        border-radius: 10px;
-        padding: 10px 12px;
-        display: none;
-    }
-
-    .empty-box {
-        padding: 18px;
-        border: 1px dashed #d1d5db;
-        border-radius: 12px;
-        text-align: center;
-        color: #6b7280;
-    }
-
-    .section-grid {
-        display: grid;
-        grid-template-columns: 2fr 1fr;
-        gap: 18px;
-    }
-
-    .link-btn {
-        display: inline-block;
-        padding: 10px 14px;
-        border-radius: 10px;
-        border: 1px solid #d1d5db;
-        background: white;
-        text-decoration: none;
-        color: #111827;
-    }
-
-    .text-muted { color: #6b7280; }
-
-    @media (max-width: 1100px) {
-        .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .filters-card { grid-template-columns: 1fr; }
-        .section-grid { grid-template-columns: 1fr; }
-        .form-grid { grid-template-columns: 1fr; }
-    }
-</style>
-
 <div class="catalog-wrap">
     <div class="catalog-header">
         <div>
@@ -462,6 +268,44 @@
         <div class="modal-footer">
             <button class="btn" type="button" onclick="closeBulkModal()">Cancelar</button>
             <button class="btn btn-primary" type="button" onclick="submitBulkUpload()">Subir archivo</button>
+        </div>
+    </div>
+</div>
+<div class="modal" id="confirmActionModal">
+    <div class="modal-box confirm-modal-box">
+        <div class="modal-header confirm-modal-header">
+            <div>
+                <div class="confirm-modal-title" id="confirmActionTitle">Confirmar acción</div>
+                <div class="confirm-modal-subtitle" id="confirmActionSubtitle">Verifica antes de continuar</div>
+            </div>
+
+            <button class="btn confirm-close-btn" type="button" onclick="closeConfirmModal()">Cerrar</button>
+        </div>
+
+        <div class="modal-body confirm-modal-body">
+            <div class="confirm-info-card">
+                <div class="confirm-info-row">
+                    <span class="confirm-info-label">Acción</span>
+                    <strong id="confirmActionInfo">Acción del sistema</strong>
+                </div>
+
+                <div class="confirm-info-row">
+                    <span class="confirm-info-label">Estado</span>
+                    <strong id="confirmActionStatus">Listo para continuar</strong>
+                </div>
+            </div>
+
+            <div class="confirm-message-wrap">
+                <label class="confirm-message-label">Mensaje</label>
+                <div class="confirm-message-box" id="confirmActionMessage">
+                    ¿Deseas continuar con esta acción?
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer confirm-modal-footer">
+            <button class="btn confirm-cancel-btn" type="button" onclick="closeConfirmModal()">Cancelar</button>
+            <button class="btn btn-primary confirm-accept-btn" type="button" id="confirmActionButton">Confirmar</button>
         </div>
     </div>
 </div>
@@ -992,110 +836,198 @@
         await loadCatalogPage();
     }
 
-    async function deactivateProduct(id) {
-        if (!confirm('¿Deseas desactivar este producto en la sucursal actual?')) return;
+    let confirmActionCallback = null;
 
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+function openConfirmModal(
+    message,
+    onConfirm,
+    title = 'Confirmar acción',
+    subtitle = 'Verifica antes de continuar',
+    actionText = 'Acción del sistema',
+    statusText = 'Listo para continuar',
+    buttonText = 'Confirmar'
+) {
+    document.getElementById('confirmActionTitle').textContent = title;
+    document.getElementById('confirmActionSubtitle').textContent = subtitle;
+    document.getElementById('confirmActionInfo').textContent = actionText;
+    document.getElementById('confirmActionStatus').textContent = statusText;
+    document.getElementById('confirmActionMessage').textContent = message;
+    document.getElementById('confirmActionButton').textContent = buttonText;
 
-        const { response, data } = await apiFetch(`/api/products/${id}/deactivate`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
+    document.getElementById('confirmActionModal').classList.add('show');
+    confirmActionCallback = onConfirm;
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirmActionModal').classList.remove('show');
+    confirmActionCallback = null;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const confirmModal = document.getElementById('confirmActionModal');
+    const confirmButton = document.getElementById('confirmActionButton');
+
+    if (confirmButton) {
+        confirmButton.addEventListener('click', async function () {
+            if (typeof confirmActionCallback === 'function') {
+                const action = confirmActionCallback;
+                closeConfirmModal();
+                await action();
             }
         });
-
-        if (!response.ok) {
-            alert(data.errors?.product_id?.[0] || data.message || 'No se pudo desactivar el producto.');
-            return;
-        }
-
-        await loadCatalogPage();
     }
+
+    if (confirmModal) {
+        confirmModal.addEventListener('click', function (e) {
+            if (e.target === confirmModal) {
+                closeConfirmModal();
+            }
+        });
+    }
+});
+
+    async function deactivateProduct(id) {
+    openConfirmModal(
+        '¿Deseas desactivar este producto en la sucursal actual?',
+        async () => {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+            const { response, data } = await apiFetch(`/api/products/${id}/deactivate`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                }
+            });
+
+            if (!response.ok) {
+                alert(data.errors?.product_id?.[0] || data.message || 'No se pudo desactivar el producto.');
+                return;
+            }
+
+            await loadCatalogPage();
+        },
+        'Desactivar producto',
+        'Confirma la acción para actualizar su estado en la sucursal actual',
+        'Desactivación de producto',
+        'Listo para continuar',
+        'Confirmar desactivación'
+    );
+}
 
     async function deactivateService(id) {
-        if (!confirm('¿Deseas desactivar este servicio?')) return;
+    openConfirmModal(
+        '¿Deseas desactivar este servicio?',
+        async () => {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const { response, data } = await apiFetch(`/api/services/${id}/deactivate`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                }
+            });
 
-        const { response, data } = await apiFetch(`/api/services/${id}/deactivate`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
+            if (!response.ok) {
+                alert(data.message || 'No se pudo desactivar el servicio.');
+                return;
             }
-        });
 
-        if (!response.ok) {
-            alert(data.message || 'No se pudo desactivar el servicio.');
-            return;
-        }
-
-        await loadCatalogPage();
-    }
-
+            await loadCatalogPage();
+        },
+        'Desactivar servicio',
+        'Confirma la acción para actualizar su estado',
+        'Desactivación de servicio',
+        'Listo para continuar',
+        'Confirmar desactivación'
+    );
+}
     async function deleteCategory(id) {
-        if (!confirm('¿Deseas eliminar definitivamente esta categoría?')) return;
+    openConfirmModal(
+        '¿Deseas eliminar definitivamente esta categoría?',
+        async () => {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const { response, data } = await apiFetch(`/api/categories/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                }
+            });
 
-        const { response, data } = await apiFetch(`/api/categories/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
+            if (!response.ok) {
+                alert(data.errors?.category_id?.[0] || data.message || 'No se pudo eliminar la categoría.');
+                return;
             }
-        });
 
-        if (!response.ok) {
-            alert(data.errors?.category_id?.[0] || data.message || 'No se pudo eliminar la categoría.');
-            return;
-        }
-
-        await loadCatalogPage();
-    }
-
+            await loadCatalogPage();
+        },
+        'Eliminar categoría',
+        'Esta acción eliminará la categoría del sistema',
+        'Eliminación de categoría',
+        'Listo para eliminar',
+        'Confirmar eliminación'
+    );
+}
     async function deleteProduct(id) {
-        if (!confirm('¿Deseas eliminar este producto de la sucursal actual? Si es su última sucursal, se eliminará completamente.')) return;
+    openConfirmModal(
+        '¿Deseas eliminar este producto de la sucursal actual? Si es su última sucursal, se eliminará completamente.',
+        async () => {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const { response, data } = await apiFetch(`/api/products/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                }
+            });
 
-        const { response, data } = await apiFetch(`/api/products/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
+            if (!response.ok) {
+                alert(data.errors?.product_id?.[0] || data.message || 'No se pudo eliminar el producto.');
+                return;
             }
-        });
 
-        if (!response.ok) {
-            alert(data.errors?.product_id?.[0] || data.message || 'No se pudo eliminar el producto.');
-            return;
-        }
-
-        await loadCatalogPage();
-    }
+            await loadCatalogPage();
+        },
+        'Eliminar producto',
+        'Esta acción puede afectar su disponibilidad en el catálogo',
+        'Eliminación de producto',
+        'Listo para eliminar',
+        'Confirmar eliminación'
+    );
+}
 
     async function deleteService(id) {
-        if (!confirm('¿Deseas eliminar definitivamente este servicio?')) return;
+    openConfirmModal(
+        '¿Deseas eliminar definitivamente este servicio?',
+        async () => {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const { response, data } = await apiFetch(`/api/services/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                }
+            });
 
-        const { response, data } = await apiFetch(`/api/services/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
+            if (!response.ok) {
+                alert(data.message || 'No se pudo eliminar el servicio.');
+                return;
             }
-        });
 
-        if (!response.ok) {
-            alert(data.message || 'No se pudo eliminar el servicio.');
-            return;
-        }
-
-        await loadCatalogPage();
-    }
+            await loadCatalogPage();
+        },
+        'Eliminar servicio',
+        'Esta acción eliminará el servicio del sistema',
+        'Eliminación de servicio',
+        'Listo para eliminar',
+        'Confirmar eliminación'
+    );
+}
 
     function openBulkModal() {
         hideError('bulkUploadErrorBox');
