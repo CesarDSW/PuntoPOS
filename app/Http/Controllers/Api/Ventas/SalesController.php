@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\Ventas;
 
+use App\Services\NotificationService;
+use App\Support\CompanyPreference;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -43,8 +45,10 @@ class SalesController extends SalesBaseController
 
         return response()->json([
             'total_sold_today' => $totalSoldToday,
+            'total_sold_today_display' => CompanyPreference::formatMoneyForCompany($companyId, $totalSoldToday),
             'sales_last_24h' => $salesLast24,
             'avg_ticket_today' => $avgTicket,
+            'avg_ticket_today_display' => CompanyPreference::formatMoneyForCompany($companyId, $avgTicket),
         ]);
     }
 
@@ -124,14 +128,16 @@ class SalesController extends SalesBaseController
             ->orderByDesc('s.date_time')
             ->paginate($perPage);
 
-        $sales->getCollection()->transform(function ($row) {
+        $sales->getCollection()->transform(function ($row) use ($companyId) {
             return [
                 'sale_id' => (int) $row->sale_id,
                 'sale_folio' => $this->formatSaleFolio((int) $row->sale_id),
                 'date_time' => $row->date_time,
+                'date_time_display' => CompanyPreference::formatDateTimeForCompany($companyId, $row->date_time),
                 'customer_name' => $row->name_customer,
                 'items_count' => (int) $row->items_count,
                 'total' => (float) $row->total,
+                'total_display' => CompanyPreference::formatMoneyForCompany($companyId, $row->total),
                 'payment_method' => $row->payment_method,
                 'status_sale' => $row->status_sale,
             ];
@@ -234,10 +240,15 @@ class SalesController extends SalesBaseController
             'sale_id' => (int) $sale->sale_id,
             'sale_folio' => $this->formatSaleFolio((int) $sale->sale_id),
             'date_time' => $sale->date_time,
+            'date_time_display' => CompanyPreference::formatDateTimeForCompany($companyId, $sale->date_time),
             'subtotal' => (float) $sale->subtotal,
+            'subtotal_display' => CompanyPreference::formatMoneyForCompany($companyId, $sale->subtotal),
             'discount' => (float) $sale->discount,
+            'discount_display' => CompanyPreference::formatMoneyForCompany($companyId, $sale->discount),
             'iva' => $iva,
+            'iva_display' => CompanyPreference::formatMoneyForCompany($companyId, $iva),
             'total' => (float) $sale->total,
+            'total_display' => CompanyPreference::formatMoneyForCompany($companyId, $sale->total),
             'status_sale' => $sale->status_sale,
             'customer' => [
                 'customer_id' => (int) $sale->customer_id,
@@ -257,10 +268,26 @@ class SalesController extends SalesBaseController
                 'payment_method' => $sale->payment_method,
                 'status_payment' => $sale->status_payment,
                 'amount_paid' => (float) ($sale->amount_paid ?? 0),
+                'amount_paid_display' => CompanyPreference::formatMoneyForCompany($companyId, $sale->amount_paid ?? 0),
                 'change_given' => (float) ($sale->change_given ?? 0),
+                'change_given_display' => CompanyPreference::formatMoneyForCompany($companyId, $sale->change_given ?? 0),
                 'reference_payment' => $sale->reference_payment,
             ],
-            'items' => $items,
+            'items' => $items->map(function ($item) use ($companyId){
+                return [
+                    'saleitem_id' => $item['saleitem_id'],
+                    'item_type' => $item['item_type'],
+                    'item_id' => $item['item_id'],
+                    'item_name' => $item['item_name'],
+                    'amount' => $item['amount'],
+                    'unit_price' => $item['unit_price'],
+                    'unit_price_display' => CompanyPreference::formatMoneyForCompany($companyId, $item['unit_price']),
+                    'discount' => $item['discount'],
+                    'discount_display' => CompanyPreference::formatMoneyForCompany($companyId, $item['discount']),
+                    'total_line' => $item['total_line'],
+                    'total_line_display' => CompanyPreference::formatMoneyForCompany($companyId, $item['total_line']),
+                ];
+            })->values(),
         ]);
     }
 
@@ -392,6 +419,7 @@ class SalesController extends SalesBaseController
                         'line_subtotal' => $lineSubtotal,
                         'previous_stock' => $currentStock,
                         'new_stock' => $newStock,
+                        'minimum_stock' => (int) $stockRow->minimum_stock,
                     ];
                 }
 
@@ -476,6 +504,16 @@ class SalesController extends SalesBaseController
                         'previous_stock' => $item['previous_stock'],
                         'new_stock' => $item['new_stock'],
                     ]);
+
+                    app(Notificationervice::class)->handleStockChanged(
+                        companyId: $companyId,
+                        branchId: $branchId,
+                        productId: (int) $item['product_id'],
+                        productName: (string) $item['product_name'],
+                        oldStock: (int) $item['previous_stock'],
+                        newStock: (int) $item['new_stock'],
+                        minimumStock: (int) $item['minimum_stock'],
+                    );
                 }
 
                 return [
@@ -492,6 +530,22 @@ class SalesController extends SalesBaseController
                     'items' => $processedItems,
                 ];
             });
+
+            $result['date_time_display'] = CompanyPreference::formatDateTimeForCompany($companyId, $result['data']['data_time'] ?? now());
+            $result['subtotal_display'] = CompanyPreference::formatMoneyForCompany($companyId, $result['data']['subtotal'] ?? 0);
+            $result['discount_display'] = CompanyPreference::formatMoneyForCompany($companyId, $result['data']['discount'] ?? 0);
+            $result['iva_display'] = CompanyPreference::formatMoneyForCompany($companyId, $result['data']['iva'] ?? 0);
+            $result['total_display'] = CompanyPreference::formatMoneyForCompany($companyId, $result['data']['total'] ?? 0);  
+            $result['amount_paid_display'] = CompanyPreference::formatMoneyForCompany($companyId, $result['data']['amount_paid'] ?? 0);
+            $result['change_given_display'] = CompanyPreference::formatMoneyForCompany($companyId, $result['data']['change_given'] ?? 0);
+            
+            if(!empty($result['items']) && is_array($result['items'])) {
+                $result['items'] = collect($result['items'])->map(function ($item) use ($companyId) {
+                    $item['unit_price_display'] = CompanyPreference::formatMoneyForCompany($companyId, $item['unit_price'] ?? 0);
+                    $item['line_subtotal_display'] = CompanyPreference::formatMoneyForCompany($companyId, $item['line_subtotal'] ?? 0);
+                    return $item;
+                })->values()->all();
+            }
 
             return response()->json([
                 'message' => 'Venta registrada correctamente.',

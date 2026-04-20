@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Ventas;
 
+use App\Support\CompanyPreference;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -95,7 +96,11 @@ class PosController extends SalesBaseController
         $products = $query
             ->orderBy('p.name_product')
             ->limit($limit)
-            ->get();
+            ->get()
+            ->map(function ($item) use ($companyId) {
+                $item->price_display = CompanyPreference::formatMoneyForCompany($companyId, $item->price);
+                return $item;
+            });
 
         return response()->json($products);
     }

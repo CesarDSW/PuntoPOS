@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Rol;
 use App\Models\Company;
 use App\Models\CompanySettings;
+use App\Models\SystemNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -43,14 +44,13 @@ class SettingsController extends Controller
                 'notify_low_stock' => true,
                 'notify_sale_cancelled' => true,
                 'notify_out_of_stock' => true,
-                'language' => 'Español (México)',
-                'timezone' => 'Ciudad de México (GMT-6)',
-                'date_format' => 'DD/MM/YYYY',
-                'time_format' => '24 horas',
+                'timezone' => 'America/Mexico_City',
+                'date_format' => 'd/m/Y',
+                'time_format' => 'H:i',
                 'auto_print' => true,
                 'show_taxes' => true,
                 'printer_width' => '80mm',
-                'theme' => 'Claro',
+                'theme' => 'light',
                 'price_decimals' => '2',
             ]
         );
@@ -397,7 +397,7 @@ class SettingsController extends Controller
     {
         $authUser = Auth::user();
 
-        $settings = CompanySetting::firstOrCreate([
+        $settings = CompanySettings::firstOrCreate([
             'company_idfk' => $authUser->company_idfk
         ]);
 
@@ -411,26 +411,36 @@ class SettingsController extends Controller
             ->with('success', 'Notificaciones actualizadas correctamente.');
     }
 
+    public function notificationsList()
+    {
+        $authUser = Auth::user();
+
+        $notifications = SystemNotification::where('company_idfk', $authUser->company_idfk)
+            ->orderByDesc('notification_id')
+            ->limit(20)
+            ->get();
+        
+        return view('notifications-index', compact('notifications'));
+    }
+
     public function updatePreferences(Request $request)
     {
         $authUser = Auth::user();
 
-        $settings = CompanySetting::firstOrCreate([
+        $settings = CompanySettings::firstOrCreate([
             'company_idfk' => $authUser->company_idfk
         ]);
 
         $request->validate([
-            'language' => 'required|string|max:50',
             'timezone' => 'required|string|max:100',
             'date_format' => 'required|string|max:30',
             'time_format' => 'required|string|max:20',
             'printer_width' => 'required|string|max:10',
-            'theme' => 'required|string|max:20',
-            'price_decimals' => 'required|string|max:20',
+            'theme' => 'required|string|in:light,dark,auto',
+            'price_decimals' => 'required|in:0,2',
         ]);
 
         $settings->update([
-            'language' => $request->language,
             'timezone' => $request->timezone,
             'date_format' => $request->date_format,
             'time_format' => $request->time_format,
@@ -449,19 +459,18 @@ class SettingsController extends Controller
     {
         $authUser = Auth::user();
 
-        $settings = CompanySetting::firstOrCreate([
+        $settings = CompanySettings::firstOrCreate([
             'company_idfk' => $authUser->company_idfk
         ]);
 
         $settings->update([
-            'language' => 'Español (México)',
-            'timezone' => 'Ciudad de México (GMT-6)',
-            'date_format' => 'DD/MM/YYYY',
-            'time_format' => '24 horas',
+            'timezone' => 'America/Mexico_City',
+            'date_format' => 'd/m/Y',
+            'time_format' => 'H:i',
             'auto_print' => true,
             'show_taxes' => true,
             'printer_width' => '80mm',
-            'theme' => 'Claro',
+            'theme' => 'light',
             'price_decimals' => '2',
         ]);
 

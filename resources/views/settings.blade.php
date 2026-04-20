@@ -918,22 +918,27 @@
 
                         <div class="settings-card inner-card">
                             <h3>Configuración regional</h3>
-                            <p>Idioma, zona horaria y formatos</p>
+                            <p>Zona horaria y formatos</p>
 
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>Idioma</label>
-                                    <select name="language" class="form-input">
-                                        <option value="Español (México)" @selected($settings->language == 'Español (México)')>Español (México)</option>
-                                        <option value="English (US)" @selected($settings->language == 'English (US)')>English (US)</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
                                     <label>Zona horaria</label>
                                     <select name="timezone" class="form-input">
-                                        <option value="Ciudad de México (GMT-6)" @selected($settings->timezone == 'Ciudad de México (GMT-6)')>Ciudad de México (GMT-6)</option>
-                                        <option value="Monterrey (GMT-6)" @selected($settings->timezone == 'Monterrey (GMT-6)')>Monterrey (GMT-6)</option>                
+                                        <option value="America/Mexico_City" @selected($settings->timezone == 'America/Mexico_City')>
+                                            America/Mexico_City
+                                        </option>
+                                        <option value="America/Tijuana" @selected($settings->timezone == 'America/Tijuana')>
+                                            America/Tijuana
+                                        </option>
+                                        <option value="America/Bogota" @selected($settings->timezone == 'America/Bogota')>
+                                            America/Bogota
+                                        </option>
+                                        <option value="America/New_York" @selected($settings->timezone == 'America/New_York')>
+                                            America/New_York
+                                        </option>    
+                                        <option value="Europe/Madrid" @selected($settings->timezone == 'Europe/Madrid')>
+                                            Europe/Madrid
+                                        </option>           
                                     </select>
                                 </div>
                             </div>
@@ -942,16 +947,17 @@
                                 <div class="form-group">
                                     <label>Formato de fecha</label>
                                     <select name="date_format" class="form-input">
-                                        <option value="DD/MM/YYYY" @selected($settings->date_format == 'DD/MM/YYYY')>DD/MM/YYYY (31/12/2024)</option>
-                                        <option value="MM/DD/YYYY" @selected($settings->date_format == 'MM/DD/YYYY')>MM/DD/YYYY (12/31/2024)</option>
+                                        <option value="d/m/Y" @selected($settings->date_format == 'd/m/Y')>d/m/Y (31/12/2024)</option>
+                                        <option value="m/d/Y" @selected($settings->date_format == 'm/d/Y')>m/d/Y (12/31/2024)</option>
+                                        <option value="Y-m-d" @selected($settings->date_format == 'Y-m-d')>Y-m-d (2024-12-31)</option>
                                     </select>
                                 </div>
 
                                 <div class="form-group">
                                     <label>Formato de hora</label>
                                     <select name="time_format" class="form-input">
-                                        <option value="24 horas" @selected($settings->time_format == '24 horas')>24 horas (18:30)</option>
-                                        <option value="12 horas" @selected($settings->time_format == '12 horas')>12 horas (6:30 PM)</option>
+                                        <option value="H:i" @selected($settings->time_format == 'H:i')>24 horas (18:30)</option>
+                                        <option value="h:i A" @selected($settings->time_format == 'h:i A')>12 horas (06:30 PM)</option>
                                     </select>
                                 </div>
                             </div>
@@ -1008,18 +1014,19 @@
                             <div class="form-group">
                                 <label>Tema de la interfaz</label>
                                 <div class="theme-options">
-                                    <label class="theme-card {{ $settings->theme == 'Claro' ? 'selected' : '' }}">
-                                        <input type="radio" name="theme" value="Claro" {{ $settings->theme == 'Claro' ? 'checked' : '' }}>
+                                    <label class="theme-card {{ $settings->theme == 'light' ? 'selected' : '' }}">
+                                        <input type="radio" name="theme" value="light" {{ $settings->theme == 'light' ? 'checked' : '' }}>
                                         <span>Claro</span>
                                     </label>
 
-                                    <label class="theme-card {{ $settings->theme == 'Oscuro' ? 'selected' : '' }}">
-                                        <input type="radio" name="theme" value="Oscuro" {{ $settings->theme == 'Oscuro' ? 'checked' : '' }}>
+
+                                    <label class="theme-card {{ $settings->theme == 'dark' ? 'selected' : '' }}">                                        
+                                        <input type="radio" name="theme" value="dark" {{ $settings->theme == 'dark' ? 'checked' : '' }}>                                        
                                         <span>Oscuro</span>
                                     </label>
 
-                                    <label class="theme-card {{ $settings->theme == 'Auto' ? 'selected' : '' }}">
-                                        <input type="radio" name="theme" value="Auto" {{ $settings->theme == 'Auto' ? 'checked' : '' }}>
+                                    <label class="theme-card {{ $settings->theme == 'auto' ? 'selected' : '' }}">
+                                        <input type="radio" name="theme" value="auto" {{ $settings->theme == 'auto' ? 'checked' : '' }}>
                                         <span>Auto</span>
                                     </label>
                                 </div>
@@ -1028,8 +1035,8 @@
                             <div class="form-group">
                                 <label>Decimales en precios</label>
                                 <select name="price_decimals" class="form-input">
-                                    <option value="2" @selected($settings->price_decimals == '2')>2 decimales ($100.00)</option>
-                                    <option value="0" @selected($settings->price_decimals == '0')>0 decimales ($100)</option>
+                                    <option value="2" @selected((string) $settings->price_decimals === '2')>2 decimales ($100.00)</option>
+                                    <option value="0" @selected((string) $settings->price_decimals === '0')>0 decimales ($100)</option>
                                 </select>
                             </div>
                         </div>
@@ -1045,6 +1052,50 @@
                         <button type="submit" class="btn-secondary">Restablecer valores por defecto</button>
                     </form>
                 </div>
+
+                @push('scripts')
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        function syncSelectableCards(inputName, cardSelector) {
+                            const cards = document.querySelectorAll(cardSelector);    
+
+                            cards.forEach((card) => {
+                                const input = card.querySelector(`input[name="${inputName}"]`);
+                                if (!input) return;
+
+                                if (input.checked) {
+                                    card.classList.add('selected');
+                                } else {
+                                    card.classList.remove('selected');
+                                }
+                                
+                                card.addEventListener('click', function () {
+                                    input.checked = true;
+
+                                    cards.forEach((otherCard) => {
+                                        otherCard.classList.remove('selected');
+                                    });
+
+                                    card.classList.add('selected');
+                                });
+
+                                input.addEventListener('change', function () {
+                                    cards.forEach((otherCard) => {
+                                        otherCard.classList.remove('selected');
+                                    });
+
+                                    if(input.checked) {
+                                        card.classList.add('selected');
+                                    }
+                                });
+                            });
+                        }
+
+                        syncSelectableCards('printer_width', '.printer-option');
+                        syncSelectableCards('theme', '.theme-card');
+                    });
+                </script>
+                @endpush
             @endif
         </section>
     </div>  

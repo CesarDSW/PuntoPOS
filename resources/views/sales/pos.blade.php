@@ -447,11 +447,7 @@
     let currentShiftSummary = null;
 
     function money(value) {
-        return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-            maximumFractionDigits: 2
-        }).format(Number(value || 0));
+        return window.appFormat.money(value);
     }
 
     function showError(id, message) {
@@ -479,23 +475,7 @@
     }
 
     function formatShiftOpenDateTime(date = new Date()) {
-        const months = [
-            'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-            'jul', 'ago', 'sep', 'oct', 'nov', 'dic'
-        ];
-
-        const day = date.getDate();
-        const month = months[date.getMonth()];
-        const year = date.getFullYear();
-
-        let hours = date.getHours();
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const suffix = hours >= 12 ? 'p.m.' : 'a.m.';
-
-        hours = hours % 12;
-        if (hours === 0) hours = 12;
-
-        return `${day} ${month} ${year} - ${hours}:${minutes} ${suffix}`;
+        return window.appFormat.dataTime(date);
     }
 
     function prepareShiftOpenModal() {

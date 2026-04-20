@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layout.dashboard_design')
 
 @section('title', 'Ventas')
 
@@ -140,11 +140,7 @@
     const salesPosUrl = @json(route('sales.pos'));
 
     function money(value) {
-        return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-            maximumFractionDigits: 2
-        }).format(Number(value || 0));
+        return window.appFormat.money(value);
     }
 
     function showError(id, message) {
@@ -320,7 +316,7 @@
             return `
                 <tr>
                     <td style="font-weight:700; color:#1d4ed8;">${item.sale_folio}</td>
-                    <td>${item.date_time}</td>
+                    <td>${window.appFormat.dateTime(item.date_time)}</td>
                     <td style="font-weight:600;">${item.customer_name}</td>
                     <td>${item.items_count} items</td>
                     <td style="font-weight:700;">${money(item.total)}</td>
