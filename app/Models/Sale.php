@@ -20,5 +20,12 @@ class Sale extends Model
         'total',
         'status_sale',
     ];
-
+     public function payment()
+{
+    return $this->hasOne(\App\Models\Payment::class, 'sale_idfk', 'sale_id');
+}
+public function customer()
+{
+    return $this->belongsTo(\App\Models\Customer::class, 'customer_idfk', 'customer_id');
+}
 }

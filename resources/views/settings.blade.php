@@ -27,39 +27,39 @@
         <aside class="settings-menu">
             <a href="{{ route('settings', ['tab' => 'perfil']) }}"
             class="settings-menu-item {{ request('tab', 'perfil') == 'perfil' ? 'active' : '' }}">
-            Perfil del negocio
+             🏢Perfil del negocio
             </a>
 
             <a href="{{ route('settings', ['tab' => 'usuarios']) }}"
             class="settings-menu-item {{ request('tab', 'usuarios') == 'usuarios' ? 'active' : '' }}">
-            Usuarios y roles
+            👥Usuarios y roles
             </a>
 
             <a href="{{ route('settings', ['tab' => 'pagos']) }}"
             class="settings-menu-item {{ request('tab', 'pagos') == 'pagos' ? 'active' : '' }}">
-            Métodos de pago
+            💳Métodos de pago
             </a>
 
             <a href="{{ route('settings', ['tab' => 'notificaciones']) }}"
             class="settings-menu-item {{ request('tab', 'notificaciones') == 'notificaciones' ? 'active' : '' }}">
-            Notificaciones
+            🔔Notificaciones
             </a>
 
             <a href="{{ route('settings', ['tab' => 'seguridad']) }}"
             class="settings-menu-item {{ request('tab', 'seguridad') == 'seguridad' ? 'active' : '' }}">
-            Seguridad
+            🛡️Seguridad
             </a>
 
             <a href="{{ route('settings', ['tab' => 'preferencias']) }}"
             class="settings-menu-item {{ request('tab', 'preferencias') == 'preferencias' ? 'active' : '' }}">
-            Preferencias
+            ⚙️Preferencias
             </a>
         </aside>
 
         <section class="settings-content">
             @if(request('tab', 'perfil') == 'perfil')
                 <div class="settings-card">
-                    <h2>Información del negocio</h2>
+                    <h2>🏢Información del negocio</h2>
                     
                     <form method='POST' action="{{ route('settings.update') }}" enctype="multipart/form-data">
                         @csrf
@@ -169,11 +169,11 @@
                 <div class="settings-card">
                     <div class="users-header">
                         <div>
-                            <h2>Usuarios y roles</h2>
+                            <h2>👥Usuarios y roles</h2>
                             <p>Gestiona el acceso al sistema</p>
                         </div>
                         
-                        <button type="button" class="btn-save" onclick="openUserModal()">
+                        <button type="button" class="btn-new-user" onclick="openUserModal()">
                            + Nuevo usuario
                         </button>
                     </div>
@@ -384,7 +384,7 @@
 
             @elseif(request('tab') == 'pagos')
                 <div class="settings-card">
-                    <h2>Métodos de pago</h2>
+                    <h2>💳Métodos de pago</h2>
 
                     @php
                         $paymentMethods = $company->payment_methods
@@ -401,23 +401,25 @@
                    
                             <div class="payment-grid">
                                 <label class="payment-option">
-                                    <input type="checkbox" name="payment_methods[]" value="Efectivo" {{ in_array('Efectivo', $paymentMethods) ? 'checked' : '' }}>
-                                    <span>Efectivo</span>
+                                  <input type="checkbox" name="payment_methods[]" value="Efectivo" {{ in_array('Efectivo', $paymentMethods) ? 'checked' : '' }}>
+                                  <div class="payment-content">
+                                      💵 <span>Efectivo</span>
+                            </div>
                                 </label>
 
                                 <label class="payment-option">
                                     <input type="checkbox" name="payment_methods[]" value="Tarjeta" {{ in_array('Tarjeta', $paymentMethods) ? 'checked' : '' }}>
-                                    <span>Tarjeta</span>
+                                    <span>💳Tarjeta</span>
                                 </label>
 
                                 <label class="payment-option">
                                     <input type="checkbox" name="payment_methods[]" value="Transferencia" {{ in_array('Transferencia', $paymentMethods) ? 'checked' : '' }}>
-                                    <span>Transferencia</span>
+                                    <span>🔁Transferencia</span>
                                 </label>
 
                                 <label class="payment-option">
                                     <input type="checkbox" name="payment_methods[]" value="Cheque" {{ in_array('Cheque', $paymentMethods) ? 'checked' : '' }}>
-                                    <span>Cheque</span>
+                                    <span>🧾Cheque</span>
                                 </label>
                             </div>
                         </div>
@@ -428,7 +430,7 @@
     
             @elseif(request('tab') == 'notificaciones')
                 <div class="settings-card">
-                    <h2>Notificaciones</h2>
+                    <h2>🔔Notificaciones</h2>
                     <p>Configura las notificaciones que deseas recibir sobre tu negocio.</p>
 
                     <form method="POST" action="{{ route('settings.notifications.update') }}">
@@ -474,7 +476,7 @@
     
             @elseif(request('tab') == 'seguridad')
                 <div class="settings-card">
-                    <h2>Seguridad</h2>
+                    <h2>🔐Seguridad</h2>
                     <p>Administra la seguridad de tu cuenta y protege el acceso a tu negocio.</p>
 
                     @if(session('success_password'))
@@ -616,7 +618,7 @@
                     
             @elseif(request('tab') == 'preferencias')
                 <div class="settings-card">
-                    <h2>Preferencias</h2>
+                    <h2>⚙️Preferencias</h2>
                     <p>Configura tus preferencias generales del sistema.</p>
 
                     <form method="POST" action="{{ route('settings.preferences.update') }}">
@@ -706,6 +708,8 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        
 
                         <div class="settings-card inner-card">
                             <h3>Preferencias de visualización</h3>
@@ -716,21 +720,23 @@
                                 <div class="theme-options">
                                     <label class="theme-card {{ $settings->theme == 'Claro' ? 'selected' : '' }}">
                                         <input type="radio" name="theme" value="Claro" {{ $settings->theme == 'Claro' ? 'checked' : '' }}>
-                                        <span>Claro</span>
+                                        <div class="theme-content">☀️ <span>Claro</span></div>
                                     </label>
 
                                     <label class="theme-card {{ $settings->theme == 'Oscuro' ? 'selected' : '' }}">
                                         <input type="radio" name="theme" value="Oscuro" {{ $settings->theme == 'Oscuro' ? 'checked' : '' }}>
-                                        <span>Oscuro</span>
+                                        <div class="theme-content">🌙 <span>Oscuro</span></div>
                                     </label>
 
                                     <label class="theme-card {{ $settings->theme == 'Auto' ? 'selected' : '' }}">
                                         <input type="radio" name="theme" value="Auto" {{ $settings->theme == 'Auto' ? 'checked' : '' }}>
-                                        <span>Auto</span>
+                                        <div class="theme-content">⚙️ <span>Auto</span></div>
                                     </label>
                                 </div>
                             </div>
 
+
+                            
                             <div class="form-group">
                                 <label>Decimales en precios</label>
                                 <select name="price_decimals" class="form-input">
@@ -748,10 +754,11 @@
                     <form method="POST" action="{{ route('settings.preferences.reset') }}">
                         @csrf
 
-                        <button type="submit" class="btn-secondary">Restablecer valores por defecto</button>
+                        <br><button type="submit" class="btn-secondary">Restablecer valores por defecto</button>
                     </form>
                 </div>
             @endif
         </section>
     </div>  
+    
 @endsection

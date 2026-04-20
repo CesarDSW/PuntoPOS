@@ -71,5 +71,6 @@ class DashboardController extends Controller
 
         return redirect()->route('dashboard')->with('success', 'Configuración inicial guardada.');
     }
-
+    
+     
 }

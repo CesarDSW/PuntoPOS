@@ -10,7 +10,7 @@ use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Models\Company;
 use App\Models\CompanySettings;
-
+use App\Models\CompanySetting;
 
 class SettingsController extends Controller
 {

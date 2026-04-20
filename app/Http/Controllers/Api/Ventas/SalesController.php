@@ -505,6 +505,12 @@ class SalesController extends SalesBaseController
             return response()->json([
                 'message' => 'No se pudo registrar la venta.',
             ], 422);
-        }
+     
+            }
+            Sale::create([
+    'total' => $total,
+    'payment_method' => $request->payment_method,
+]);
     }
+    
 }

@@ -156,10 +156,11 @@
         <!-- HEADER -->
         <thead>
             <tr>
-                <th>ID</th>
+                
                 <th>Cliente</th>
                 <th>Monto</th>
                 <th>Método</th>
+                <th>Estado</th>
                 <th>Fecha</th>
             </tr>
         </thead>
@@ -168,13 +169,16 @@
         <tbody>
             @forelse($ventas as $venta)
             <tr>
-                <td>{{ $venta->sale_id }}</td>
+               
 
-                <td>{{ $venta->customer_idfk }}</td>
+                <td>{{ $venta->customer->name_customer ?? 'Sin cliente' }}</td>
 
                 <td>${{ number_format($venta->total) }}</td>
 
-                <td>{{ $venta->status_sale }}</td>
+                 <td> {{ $venta->payment->payment_method ?? 'N/A' }}</td>
+                 
+
+                <td>{{ $venta->payment->status_payment ?? 'N/A' }}</td>
 
                 <td>{{ \Carbon\Carbon::parse($venta->date_time)->format('d/m/Y') }}</td>
             </tr>

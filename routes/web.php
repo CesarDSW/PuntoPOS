@@ -278,8 +278,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports/peak-hours', [ReportController::class, 'peakHours']);
         Route::get('/reports/top-products', [ReportController::class, 'topProducts']);
         Route::get('/reports/payment-methods', [ReportController::class, 'paymentMethods']);
-    });
 
-    //Rutas Brenda
-    //Route::post('/branches', [BranchController::class, 'store'])->name('branches.store');
+        
+    
 });
+
+
+});
+
