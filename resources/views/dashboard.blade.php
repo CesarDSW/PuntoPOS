@@ -108,7 +108,7 @@
 
     <div class="card">
         <h4>Ventas del día</h4>
-        <p>${{ number_format($ventasDia ?? 0) }}</p>
+        <p><strong>$</strong> {{ number_format($ventasDia ?? 0, 2) }}</p>
     </div>
 
     <div class="card">
@@ -137,19 +137,46 @@
         </div>
     </div>
 
-    <div class="chart-card">
-        <h3>Métodos de pago</h3>
-        <div class="chart-container">
+    <!-- 💳 PAGOS CON INFO -->
+    <div class="chart-card" style="display:flex; gap:20px; align-items:center;">
+        
+        <!-- GRÁFICA -->
+        <div style="width:50%;">
             <canvas id="pagosChart"></canvas>
         </div>
+
+
     </div>
 
 </div>
 
-
 <div class="table-card">
 
         <h3>Registro de Ventas</h3>
+        <form method="GET" action="{{ route('dashboard') }}" class="filters">
+
+    <input 
+        type="text" 
+        name="search" 
+        placeholder="Buscar por cliente o metodo..."
+        value="{{ request('search') }}"
+    >
+
+    <input 
+        type="date" 
+        name="date" 
+        value="{{ request('date') }}"
+    >
+
+    <select name="status">
+        <option value="">Todos los estados</option>
+        <option value="PAGADO" {{ request('status') == 'PAGADO' ? 'selected' : '' }}>Pagado</option>
+        <option value="PENDIENTE" {{ request('status') == 'PENDIENTE' ? 'selected' : '' }}>Pendiente</option>
+    </select>
+
+    <button type="submit">Buscar</button>
+
+</form>
 
     <table class="sales-table">
 
@@ -173,7 +200,7 @@
 
                 <td>{{ $venta->customer->name_customer ?? 'Sin cliente' }}</td>
 
-                <td>${{ number_format($venta->total) }}</td>
+                <td><strong>$</strong> {{ number_format($venta->total, 2) }}</td>
 
                  <td> {{ $venta->payment->payment_method ?? 'N/A' }}</td>
                  
@@ -196,16 +223,18 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<script>
 
-/* ===== VENTAS ===== */
+
+<script>
+const ventasData = @json($ventasSemana);
+
 new Chart(document.getElementById('ventasChart'), {
     type: 'line',
     data: {
         labels: ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'],
         datasets: [{
             label: 'Ventas',
-            data: [2500,3500,2800,4200,3900,5200,4500],
+            data: ventasData,
             borderColor: '#2563eb',
             backgroundColor: 'rgba(37,99,235,0.15)',
             fill: true,
@@ -219,12 +248,23 @@ new Chart(document.getElementById('ventasChart'), {
 });
 
 /* ===== PAGOS ===== */
+
+const metodosData = @json($metodosPago);
+
+const valores = [
+    metodosData.efectivo,
+    metodosData.tarjeta,
+    metodosData.transferencia
+];
+
+const total = valores.reduce((a, b) => a + b, 0);
+
 new Chart(document.getElementById('pagosChart'), {
     type: 'doughnut',
     data: {
         labels: ['Efectivo','Tarjeta','Transferencia'],
         datasets: [{
-            data: [40,35,25],
+            data: valores,
             backgroundColor: ['#3b82f6','#22c55e','#f59e0b'],
             borderWidth: 0
         }]
@@ -232,9 +272,21 @@ new Chart(document.getElementById('pagosChart'), {
     options:{
         responsive:true,
         maintainAspectRatio:false,
-        cutout: '65%'
+        cutout: '65%',
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        let value = context.raw;
+                        let percentage = total ? ((value / total) * 100).toFixed(1) : 0;
+                        return `${context.label}: ${value} (${percentage}%)`;
+                    }
+                }
+            }
+        }
     }
 });
+</script>
 
 </script>
 
