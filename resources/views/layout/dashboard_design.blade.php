@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Punto')</title>
 
-    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.7/css/dataTables.dataTables.css" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.7/css/dataTables.dataTables.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/2.3.7/js/dataTables.dataTables.js"></script>
 
@@ -14,7 +14,6 @@
     <link rel="stylesheet" href="{{ asset('css/components/topbar.css') }}">
     @stack('styles')
 </head>
-
 <body data-theme-preference="{{ $uiPreferences['theme'] ?? 'light' }}">
     <div class="app-shell">
         @include('partials.sidebar')
@@ -32,12 +31,13 @@
         (function () {
             const body = document.body;
             const preference = body.dataset.themePreference || 'light';
+            const media = window.matchMedia('(prefers-color-scheme: dark)');
 
             function applyTheme() {
                 let resolved = preference;
 
                 if (preference === 'auto') {
-                    resolved = window.matchMedia('(prefers-color-scheme: dark').matches ? 'dark' : 'light';  
+                    resolved = media.matches ? 'dark' : 'light';
                 }
 
                 body.setAttribute('data-theme', resolved);
@@ -45,13 +45,18 @@
 
             applyTheme();
 
-            const media = window.matchMedia('(prefers-color-scheme): dark');
-            if (media && preference === 'auto') {
-                media.addEventListener('change', applyTheme);
+            if (preference === 'auto') {
+                if (typeof media.addEventListener === 'function') {
+                    media.addEventListener('change', applyTheme);
+                } else if (typeof media.addListener === 'function') {
+                        media.addListener(applyTheme);
+                }
             }
         })();
+    </script>
 
-        document.addEventListener('DOMContentLoaded', function(){
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
             const logoInput = document.getElementById('logoInput');
             const addressInput = document.getElementById('addressInput');
             const currencyInput = document.getElementById('currencyInput');
@@ -63,30 +68,30 @@
             const progressText = document.getElementById('progressText');
             const progressFields = document.getElementById('progressFields');
 
-            if(!progressFill || !progressText || !progressFields) {
+            if (!progressFill || !progressText || !progressFields) {
                 return;
             }
 
             const totalFields = 6;
 
-            function isPaymentMethodSelected(){
+            function isPaymentMethodSelected() {
                 return Array.from(paymentMethods).some(input => input.checked);
             }
 
-            function calculateCompletedFields(){
+            function calculateCompletedFields() {
                 let completed = 0;
 
-                if(logoInput && logoInput.files.length > 0) completed++;
-                if(addressInput && addressInput.value.trim() !== '') completed++;
-                if(currencyInput && currencyInput.value.trim() !== '') completed++;
-                if(openingInput && openingInput.value.trim() !== '') completed++;
-                if(closingInput && closingInput.value.trim() !== '') completed++;
-                if(isPaymentMethodSelected()) completed++;
+                if (logoInput && logoInput.files.length > 0) completed++;
+                if (addressInput && addressInput.value.trim() !== '') completed++;
+                if (currencyInput && currencyInput.value.trim() !== '') completed++;
+                if (openingInput && openingInput.value.trim() !== '') completed++;
+                if (closingInput && closingInput.value.trim() !== '') completed++;
+                if (isPaymentMethodSelected()) completed++;
 
                 return completed;
             }
 
-            function updateProgress(){
+            function updateProgress() {
                 const completed = calculateCompletedFields();
                 const percentage = Math.round((completed / totalFields) * 100);
                 const remaining = totalFields - completed;
@@ -109,5 +114,7 @@
             updateProgress();
         });
     </script>
+
+    @stack('scripts')
 </body>
 </html>

@@ -5,40 +5,44 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Company;
+use App\Models\Sale;
 
 class DashboardController extends Controller
 {
-    /*Dashboard*/
-    //Funcion para mostrar el dashboard como pantalla principal
+
+    // DASHBOARD
     public function showDashboard(){
         $user = auth()->user();
-        $showOnboarding = false;
-        $company = null;
 
-        if($user && $user->company_idfk){
-            $company = Company::find($user->company_idfk);
+        $company = Company::find($user->company_idfk);
 
-            if($company && !$company->onboarding_completed){
-                $showOnboarding = true;
-            }
-        }
+        $showOnboarding = !$company || !$company->onboarding_completed;
 
-        return view('dashboard', compact('showOnboarding', 'company'));
+        $ventas = Sale::orderBy('date_time', 'desc')->take(5)->get();
+
+        return view('dashboard', compact(
+            'showOnboarding',
+            'company',
+            'ventas'
+        ));
     }
-    
-    //Funcion para guardar los datos del onboarding
+
+    // GUARDAR ONBOARDING
     public function storeOnboarding(Request $request)
     {
         $user = Auth::user();
         $company = Company::findOrFail($user->company_idfk);
         
+        // OMITIR
         if($request->has('skip')){
             $company->update([
                 'onboarding_completed' => 1,
             ]);
+
             return redirect()->route('dashboard');
         }
 
+        // VALIDACIÓN
         $request->validate([
             'address' => 'nullable|string|max:255',
             'currency' => 'nullable|string|max:20',
@@ -48,13 +52,13 @@ class DashboardController extends Controller
             'logo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-
         $logoPath = $company->logo;
 
         if($request->hasFile('logo')){
             $logoPath = $request->file('logo')->store('logos', 'public');
         }
 
+        // GUARDAR
         $company->update([
             'address' => $request->address,
             'currency' => $request->currency,
@@ -67,4 +71,6 @@ class DashboardController extends Controller
 
         return redirect()->route('dashboard')->with('success', 'Configuración inicial guardada.');
     }
+    
+     
 }

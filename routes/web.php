@@ -183,6 +183,16 @@ Route::middleware('auth')->group(function () {
         return view('sales.show', ['saleId' => $id]);
     })->whereNumber('id')->name('sales.show');
 
+    //Ticket --Adrian
+    Route::get('/ventas/{id}/ticket', function (int $id){
+        return view('sales.ticket', ['saleId' => $id]);
+    })->whereNumber('id')->name('sales.ticket');
+
+    // ticket de prueba
+    Route::get('/ventas/ticket-prueba', function (int $id) {
+        return view('sales.ticket', ['saleId' => $id]);
+    })->whereNumber('id')->name('sales.ticket');
+
     Route::view('/catalogo', 'catalog.index')->name('catalog.index');
     Route::view('/inventario', 'inventory.index')->name('inventory.index');
     Route::view('/pagos', 'payments.index')->name('payments.index');

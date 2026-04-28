@@ -1,3 +1,7 @@
+@php
+    $printSettings = \App\Support\CompanyPreference::settings(auth()->user()->company_idfk);
+@endphp
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -436,8 +440,15 @@
         </div>
     </div>
 </div>
+
 <script>
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const posPrintConfig = {
+        autoPrint: @json((bool) ($printSettings?->auto_print ?? false)),
+        printerWidth: @json($printSettings?->printer_width ?? '80mm'),
+        showTaxes: @json((bool) ($printSettings?->show_taxes ?? true))
+    }
+
     let cart = [];
     let productsCache = [];
     let customersCache = [];
@@ -1129,9 +1140,15 @@ async function confirmCloseCash() {
             `).join('')}
         `;
 
+        const ticketUrl = '/ventas/' + lastSaleId + '/ticket';
+
         document.getElementById('viewTicketBtn').onclick = function () {
-            window.location.href = '/ventas/' + lastSaleId;
+            window.open(ticketUrl, '_blank');
         };
+
+        if (posPrintConfig.autoPrint) {
+            window.open(ticketUrl + '?print=1', '_blank', 'width=480,height=760');
+        }
 
         cart = [];
         renderCart();
