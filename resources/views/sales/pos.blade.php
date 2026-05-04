@@ -486,7 +486,7 @@
     }
 
     function formatShiftOpenDateTime(date = new Date()) {
-        return window.appFormat.dataTime(date);
+        return window.appFormat.dateTime(date);
     }
 
     function prepareShiftOpenModal() {

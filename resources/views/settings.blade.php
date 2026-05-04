@@ -1034,54 +1034,88 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        @php 
+                            $clientedigitalCompanyId = (int) ($company->company_id ?? 0);
+                            $clientedigitalBranchId = (int) (optional($assignedBranch)->branch_id ?? 0);
+                            $clientedigitalUserId = (int) ($currentUserId ?? 0);
+                        @endphp
 
-                        <div class="preferences-actions">
-                            <button type="submit" class="btn-save">Guardar preferencias</button>
-                        </div>
+                        <div class="inner-card" style="margin-top: 18px;" id="clientedigitalIntegrationCard">
+                            <h3>Integración con ClienteDigital</h3>
+                            <p>Conecta Punto con ClienteDigital para importar productos y ventas.</p>
 
-                        <div class="inner-card" style="margin-top: 18px;">
-                            <h3>Pruebas de impresión</h3>
-                            <p>Valida rápidamente el ticket según la configuración seleccionada.</p>
+                            <div class="form-row" style="margin-top: 14px;">
+                                <div class="form-group">
+                                    <label>Código de vinculación</label>
+                                    <input 
+                                        type="text"
+                                        id="clientedigitalIntegrationCode"
+                                        class="form-input"
+                                        placeholder="Ejemplo: CD-PUNTO-ABC123"
+                                        autocomplete="off"
+                                    >
+                                </div>
 
-                            <div class="payment-grid" style="margin-top: 14px;">
-                                <a 
-                                    href="{{ route('sales.ticket.preview', ['width' => $settings->printer_width, 'taxes' => $settings->show_taxes ? 1 : 0]) }}"
-                                    target="_blank"
-                                    class="btn-secondary"
-                                    style="display:flex; align-items:center; justify-content:center; min-height:48px;"
-                                >
-                                    Ver ticket con configuración actual
-                                </a>
-
-                                <a 
-                                    href="{{ route('sales.ticket.preview', ['width' => $settings->printer_width, 'taxes' => $settings->show_taxes ? 1 : 0, 'print' => 1]) }}"
-                                    target="_blank"
-                                    class="btn-secondary"
-                                    style= "display:flex; align-items:center; justify-content:center; min-height:48px;"
-                                >
-                                    Probar impresión automática
-                                </a>
+                                <div class="form-group">
+                                    <label>Estado</label>
+                                    <input 
+                                        type="text"
+                                        id="clientedigitalIntegrationStatus"
+                                        class="form-input"
+                                        value="No conectado"
+                                        readonly
+                                    >
+                                </div>
                             </div>
 
-                            <div class="payment-grid" style="margin-top: 12px;">
-                                <a
-                                    href="{{ route('sales.ticket.preview', ['width' => '58mm', 'taxes' => $settings->show_taxes ? 1 : 0]) }}"
-                                    target="_blank"
-                                    class="btn-secondary"
-                                    style="display:flex; align-items:center; justify-content:center; min-height:48px;"
-                                >
-                                    Vista 58mm
-                                </a>
-
-                                <a
-                                    href="{{ route('sales.ticket.preview', ['width' => '80mm', 'taxes' => $settings->show_taxes ? 1 : 0]) }}"
-                                    target="_blank"
-                                    class="btn-secondary"
-                                    style="display:flex; align-items:center; justify-content:center; min-height:48px;"
-                                >
-                                    Vista 80mm
-                                </a>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>URL de ClienteDigital</label>
+                                    <input 
+                                        type="text"
+                                        id="clientedigitalBaseUrl"
+                                        class="form-input"
+                                        value="http://localhost/clientedigital/index.php/apis"
+                                    >
+                                </div>
                             </div>
+
+                            <div class="preferences-actions" style="margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button
+                                    type="button"
+                                    class="btn-save"
+                                    id="btnConnectClienteDigital"
+                                >
+                                    Canjear código
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="btn-secondary"
+                                    id="btnSyncClienteDigitalProducts"
+                                    disabled
+                                >
+                                    Sincronizar productos
+                                </button>
+                                
+                                <button
+                                    type="button"
+                                    class="btn-secondary"
+                                    id="btnSyncClienteDigitalSales"
+                                    disabled
+                                >
+                                    Sincronizar ventas
+                                </button>
+                            </div>
+
+                            <div id="clientedigitalIntegrationMessage" style="margin-top: 12px;"></div>
+
+                            @if(!$clientedigitalBranchId)
+                                <div class="error-box" style="margin-top: 12px;">
+                                    Para importar productos con stock y ventas, este usuario debe tener una sucursal asignada.
+                                </div>
+                            @endif
                         </div>
 
                         <div class="inner-card" style="margin-top: 18px;">
@@ -1111,6 +1145,10 @@
                                     <input type="text" class="form-input" value="{{ $settings->price_decimals }}" readonly>
                                 </div>
                             </div>
+                        </div>
+
+                        <div class="preferences-actions">
+                            <button type="submit" class="btn-save">Guardar preferencias</button>
                         </div>
                     </form>
 
@@ -1159,6 +1197,218 @@
 
                         syncSelectableCards('printer_width', '.printer-option');
                         syncSelectableCards('theme', '.theme-card');
+
+                        const clienteDigitalConfig = {
+                            companyId: {{ $clientedigitalCompanyId }},
+                            branchId: {{ $clientedigitalBranchId }},
+                            userId: {{ $clientedigitalUserId }},
+                            connectUrl: "{{ url('/api/integrations/clientedigital/connect') }}",
+                            listUrl: "{{ url('/api/integrations/clientedigital') }}"
+                        };
+
+                        let clienteDigitalIntegrationId = null;
+
+                        const cdCodeInput = document.getElementById('clientedigitalIntegrationCode');
+                        const cdBaseUrlInput = document.getElementById('clientedigitalBaseUrl');
+                        const cdStatusInput = document.getElementById('clientedigitalIntegrationStatus');
+                        const cdMessageBox = document.getElementById('clientedigitalIntegrationMessage');
+                        const cdConnectButton = document.getElementById('btnConnectClienteDigital');
+                        const cdSyncProductsButton = document.getElementById('btnSyncClienteDigitalProducts');
+                        const cdSyncSalesButton = document.getElementById('btnSyncClienteDigitalSales');
+
+                        function showClienteDigitalMessage(type, message) {
+                            if (!cdMessageBox) return;
+
+                            const background = type === 'success' ? '#dcfce7' : '#fee2e2';
+                            const color = type === 'success' ? '#166534' : '#991b1b';
+                            const border = type === 'success' ? '#86efac' : '#fecaca';
+
+                            cdMessageBox.innerHTML = `
+                                <div style="background: ${background}; color: ${color}; border: 1px solid ${border}; padding: 12px; border-radius: 12px;">
+                                    ${message}
+                                </div>
+                            `;
+                        }
+
+                        function setClienteDigitalConnected(integrationId) {
+                            clienteDigitalIntegrationId = integrationId;
+
+                            if (cdStatusInput) {
+                                cdStatusInput.value = integrationId
+                                    ? 'Conectado'
+                                    : 'No conectado';
+                            }
+
+                            if (cdSyncProductsButton) {
+                                cdSyncProductsButton.disabled = !integrationId;
+                            }
+
+                            if (cdSyncSalesButton) {
+                                cdSyncSalesButton.disabled = !integrationId;
+                            }
+                        }
+
+                        async function loadClienteDigitalIntegration() {
+                            if (!cdStatusInput) return;
+
+                            try {
+                                const response = await fetch(clienteDigitalConfig.listUrl, {
+                                    headers: {
+                                        'Accept': 'application/json'
+                                    }
+                                });
+
+                                const result = await response.json();
+
+                                if (!response.ok || !result.success) {
+                                    return;
+                                }
+
+                                const integrations = result.data || [];
+
+                                const activeIntegration = integrations.find((integration) => {
+                                    return integration.source_app === 'clientedigital'
+                                        && integration.status === 'active'
+                                        && Number(integration.company_idfk) === Number(clienteDigitalConfig.companyId);
+                                });
+
+                                if (activeIntegration) {
+                                    setClienteDigitalConnected(activeIntegration.id);
+
+                                    if (cdBaseUrlInput && activeIntegration.external_base_url) {
+                                        cdBaseUrlInput.value = activeIntegration.external_base_url;
+                                    }
+                                }
+                            } catch (error) {
+                                console.warn('No se pudo cargar la integración con ClienteDigital.', error);
+                            }
+                        }
+
+                        async function connectClienteDigital() {
+                            if (!clienteDigitalConfig.companyId || !clienteDigitalConfig.userId) {
+                                showClienteDigitalMessage('error', 'No se pudo identificar la empresa o el usuario actual.');
+                                return;
+                            }
+
+                            if (!clienteDigitalConfig.branchId) {
+                                showClienteDigitalMessage('error', 'Debes tener una sucursal asignada antes de conectar ClienteDigital.');
+                                return;
+                            }
+
+                            const code = cdCodeInput ? cdCodeInput.value.trim() : '';
+                            const baseUrl = cdBaseUrlInput ? cdBaseUrlInput.value.trim() : '';
+
+                            if (!code) {
+                                showClienteDigitalMessage('error', 'Escribe el código generado en ClienteDigital.');
+                                return;
+                            }
+
+                            if (!baseUrl) {
+                                showClienteDigitalMessage('error', 'La URL de ClienteDigital es obligatoria.');
+                                return;
+                            }
+
+                            cdConnectButton.disabled = true;
+                            cdConnectButton.textContent = 'Conectando...';
+
+                            try {
+                                const response = await fetch(clienteDigitalConfig.connectUrl, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        external_base_url: baseUrl,
+                                        integration_code: code,
+                                        company_idfk: clienteDigitalConfig.companyId,
+                                        branch_idfk: clienteDigitalConfig.branchId,
+                                        userr_idfk: clienteDigitalConfig.userId
+                                    })
+                                });
+
+                                const result = await response.json();
+
+                                if (!response.ok || !result.success) {
+                                    throw new Error(result.message || 'No se pudo conectar con ClienteDigital.');
+                                }
+
+                                const integrationId = result.data.integration.id;
+
+                                setClienteDigitalConnected(integrationId);
+
+                                showClienteDigitalMessage('success', 'Integración conectada correctamente.');
+                            } catch (error) {
+                                showClienteDigitalMessage('error', error.message);
+                            } finally {
+                                cdConnectButton.disabled = false;
+                                cdConnectButton.textContent = 'Canjear código';
+                            }
+                        }
+
+                        async function syncClienteDigital(type) {
+                            if (!clienteDigitalIntegrationId) {
+                                showClienteDigitalMessage('error', 'Primero conecta ClienteDigital.');
+                                return;
+                            }
+
+                            const isProducts = type === 'products';
+                            const button = isProducts ? cdSyncProductsButton : cdSyncSalesButton;
+                            const endpoint = isProducts ? 'sync-products' : 'sync-sales';
+
+                            button.disabled = true;
+                            button.textContent = isProducts ? 'Sincronizando productos...' : 'Sincronizando ventas...';
+
+                            try {
+                                const response = await fetch(`/api/integrations/clientedigital/${clienteDigitalIntegrationId}/${endpoint}`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        limit: 100,
+                                        offset: 0
+                                    })
+                                });
+
+                                const result = await response.json();
+
+                                if (!response.ok || !result.success) {
+                                    throw new Error(result.message || 'No se pudo sincronizar.');
+                                }
+
+                                const summary = result.data.summary;
+
+                                showClienteDigitalMessage(
+                                    'success',
+                                    `Sincronización finalizada. Creados: ${summary.created}, actualizados: ${summary.updated}, omitidos: ${summary.skipped}, fallidos: ${summary.failed}.`
+                                );
+                            } catch (error) {
+                                showClienteDigitalMessage('error', error.message);
+                            } finally {
+                                button.disabled = false;
+                                button.textContent = isProducts ? 'Sincronizar productos' : 'Sincronizar ventas';
+                            }
+                        }
+
+                        if (cdConnectButton) {
+                            cdConnectButton.addEventListener('click', connectClienteDigital);
+                        }
+
+                        if (cdSyncProductsButton) {
+                            cdSyncProductsButton.addEventListener('click', function () {
+                                syncClienteDigital('products');
+                            });
+                        }
+
+                        if (cdSyncSalesButton) {
+                            cdSyncSalesButton.addEventListener('click', function () {
+                                syncClienteDigital('sales');
+                            });
+                        }
+
+                        loadClienteDigitalIntegration();
                     });
                 </script>
             @endif
