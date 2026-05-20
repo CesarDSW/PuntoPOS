@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api\Catalogo;
 
 use Illuminate\Http\Request;
+use App\Support\UserAccess;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -12,6 +14,8 @@ class ProductController extends CatalogBaseController
 {
     public function show(Request $request, int $id)
     {
+        $this->authorizeProductPermission('view');
+
         $companyId = $this->getCompanyId();
         $branchId = $this->resolveBranchId(
             $request->filled('branch_id') ? (int) $request->branch_id : null,
@@ -58,6 +62,8 @@ class ProductController extends CatalogBaseController
 
     public function store(Request $request)
     {
+        $this->authorizeProductPermission('create');
+
         $companyId = $this->getCompanyId();
 
         $validated = $request->validate([
@@ -179,6 +185,8 @@ class ProductController extends CatalogBaseController
 
     public function update(Request $request, int $id)
     {
+        $this->authorizeProductPermission('edit');
+
         $companyId = $this->getCompanyId();
 
         $product = DB::table('productt')
@@ -274,6 +282,8 @@ class ProductController extends CatalogBaseController
 
     public function deactivate(Request $request, int $id)
     {
+        $this->authorizeProductPermission('edit');
+
         $companyId = $this->getCompanyId();
         $branchId = $this->resolveBranchId(
             $request->filled('branch_id') ? (int) $request->branch_id : null,
@@ -319,6 +329,8 @@ class ProductController extends CatalogBaseController
 
     public function destroy(Request $request, int $id)
     {
+        $this->authorizeProductPermission('delete');
+
         $companyId = $this->getCompanyId();
         $branchId = $this->resolveBranchId(
             $request->filled('branch_id') ? (int) $request->branch_id : null,
@@ -405,6 +417,23 @@ class ProductController extends CatalogBaseController
             return response()->json([
                 'message' => 'No se puede eliminar el producto porque tiene movimientos o registros relacionados.',
             ], 422);
+        }
+    }
+
+    private function authorizeProductPermission(string $ability): void 
+    {
+        $user = Auth::user();
+
+        $allowed = match ($ability) {
+            'view' => UserAccess::has($user, 'catalog.view'),
+            'create' => UserAccess::has($user, 'catalog.products.create'),
+            'edit' => UserAccess::has($user, 'catalog.products.edit'),
+            'delete' => UserAccess::has($user, 'catalog.products.delete'),
+            default => false,
+        };
+
+        if (!$user || !$allowed) {
+            abort(403, 'No autorizado.');
         }
     }
 }

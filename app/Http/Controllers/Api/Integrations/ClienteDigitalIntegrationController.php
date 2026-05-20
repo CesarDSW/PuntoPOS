@@ -291,7 +291,7 @@ class ClienteDigitalIntegrationController extends Controller
         if (!$response->successful() || !data_get($body, 'success')) {
             return response()->json([
                 'success' => false,
-                'message' => data_get($body, 'message', 'ClienteDigital no devolvio ventas corretamente.'),
+                'message' => data_get($body, 'message', 'ClienteDigital no devolvio ventas correctamente.'),
                 'clientedigital_status' => $response->status(),
                 'clientedigital_response' => $body,
             ], 422);
@@ -594,7 +594,7 @@ class ClienteDigitalIntegrationController extends Controller
                         'external_id' => $externalId,
                         'sale_id' => (int) $map->local_id,
                         'action' => 'skipped',
-                        'message' => 'La venta ya habia sido sincronizada.'
+                        'message' => 'La venta ya había sido sincronizada.'
                     ];
                 }
 

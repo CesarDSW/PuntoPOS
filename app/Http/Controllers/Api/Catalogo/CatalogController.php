@@ -3,16 +3,19 @@
 namespace App\Http\Controllers\Api\Catalogo;
 
 use App\Support\CompanyPreference;
+use App\Support\UserAccess;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Facades\Auth;
 
 class CatalogController extends CatalogBaseController
 {
     public function summary()
     {
+        $this->authorizeCatalogView();
+
         $companyId = $this->getCompanyId();
 
         $productsCount = DB::table('productt')
@@ -43,6 +46,8 @@ class CatalogController extends CatalogBaseController
 
     public function items(Request $request)
     {
+        $this->authorizeCatalogView();
+
         $validated = $request->validate([
             'branch_id'   => ['nullable', 'integer', 'exists:branch,branch_id'],
             'type'        => ['nullable', 'in:all,product,service'],
@@ -127,23 +132,23 @@ class CatalogController extends CatalogBaseController
             if ($status === 'active') {
                 $productQuery->where(function ($q) {
                     $q->where('p.status_product', 1)
-                      ->where(function ($q2) {
-                          $q2->whereNull('bps_current.status_stock')
-                             ->orWhere('bps_current.status_stock', 1);
-                      });
+                        ->where(function ($q2) {
+                            $q2->whereNull('bps_current.status_stock')
+                                ->orWhere('bps_current.status_stock', 1);
+                        });
                 });
             } elseif ($status === 'inactive') {
                 $productQuery->where(function ($q) {
                     $q->where('p.status_product', 0)
-                      ->orWhere('bps_current.status_stock', 0);
+                        ->orWhere('bps_current.status_stock', 0);
                 });
             }
 
             if ($search !== '') {
                 $productQuery->where(function ($q) use ($search) {
                     $q->where('p.name_product', 'like', "%{$search}%")
-                      ->orWhere('p.code_product', 'like', "%{$search}%")
-                      ->orWhere('p.description_product', 'like', "%{$search}%");
+                        ->orWhere('p.code_product', 'like', "%{$search}%")
+                        ->orWhere('p.description_product', 'like', "%{$search}%");
                 });
             }
 
@@ -152,8 +157,9 @@ class CatalogController extends CatalogBaseController
                 $row->stock_display = ((int) $row->stock) . ' unidades';
                 $row->price_display = CompanyPreference::formatMoneyForCompany($companyId, $row->price ?? 0);
                 $row->cost_display = $row->cost !== null
-                        ? CompanyPreference::formatMoneyForCompany($companyId, $row->cost)
-                        : null;
+                    ? CompanyPreference::formatMoneyForCompany($companyId, $row->cost)
+                    : null;
+
                 return $row;
             });
         }
@@ -190,16 +196,17 @@ class CatalogController extends CatalogBaseController
             if ($search !== '') {
                 $serviceQuery->where(function ($q) use ($search) {
                     $q->where('s.name_service', 'like', "%{$search}%")
-                      ->orWhere('s.code_service', 'like', "%{$search}%")
-                      ->orWhere('s.description_service', 'like', "%{$search}%");
+                        ->orWhere('s.code_service', 'like', "%{$search}%")
+                        ->orWhere('s.description_service', 'like', "%{$search}%");
                 });
             }
 
-            $services = $serviceQuery->get()->map(function ($row) {
+            $services = $serviceQuery->get()->map(function ($row) use ($companyId) {
                 $row->status_label = ((int) $row->status === 1) ? 'activo' : 'inactivo';
                 $row->stock_display = 'N/A';
                 $row->price_display = CompanyPreference::formatMoneyForCompany($companyId, $row->price ?? 0);
                 $row->cost_display = null;
+
                 return $row;
             });
         }
@@ -225,5 +232,14 @@ class CatalogController extends CatalogBaseController
         );
 
         return response()->json($paginator);
+    }
+
+    private function authorizeCatalogView(): void 
+    {
+        $user = Auth::user();
+
+        if (!$user || !UserAccess::has($user, 'catalog.view')) {
+            abort(403, 'No autorizado para ver el catálogo.');
+        }
     }
 }

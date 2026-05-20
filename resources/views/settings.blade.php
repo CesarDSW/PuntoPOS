@@ -88,8 +88,10 @@
                                         src="{{ asset('storage/' . $company->logo) }}"
                                         alt="Logo de la empresa"
                                         style="max-width: 180px; border-radius: 12px; border: 1px solid #d1d5db; padding: 8px;"
+                                        onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                     >
                                 </div>
+                                <div style="display:none;">Logo no disponible</div>
                             @endif
 
                             <div class="form-group">
@@ -216,6 +218,31 @@
 
                             <button type="submit" class="btn-save">Guardar cambios</button>
                         </form>
+
+                        <div class="settings-card" style="margin-top: 18px;">
+                            <h2>🏬 Sucursales registradas</h2>
+                            <p>Consulta las sucursales creadas y su responsable actual.</p>
+
+                            <div class="users-list">
+                                @forelse($branchCards as $branchCard)
+                                    <div class="user-card">
+                                        <div>
+                                            <h3>{{ $branchCard->name_branch }}</h3>
+                                            <p>{{ $branchCard->address }}, {{ $branchCard->city }}, {{ $branchCard->state }}</p>
+                                            <p style="margin-top; 6px;">Telélefono: {{ $branchCard->phone ?: 'No asignado' }}</p>
+                                            <p>Responsable: {{ $branchCard->responsible ?: 'No asignado' }}</p>
+                                            <p>Correo: {{ $branchCard->email ?: 'No asignado' }}</p>
+                                        </div>
+
+                                        <div class="user-actions-right">
+                                            <span class="role-badge">{{ $branchCard->name_branch }}</span>
+                                        </div>
+                                    </div>
+                                @empty
+                                    <p>No hay sucursales registradas.</p>
+                                @endforelse
+                            </div>
+                        </div>
                     </div>
                 @else
                     <div class="settings-card">
@@ -288,9 +315,11 @@
                             <p>Gestiona el acceso al sistema</p>
                         </div>
 
-                        <button type="button" class="btn-new-user" onclick="openUserModal()">
-                            + Nuevo usuario
-                        </button>
+                        @if($access['can_create_users'])
+                            <button type="button" class="btn-new-user" onclick="openUserModal()">
+                                + Nuevo usuario
+                            </button>
+                        @endif
                     </div>
 
                     <div class="roles-info-grid">
@@ -340,17 +369,8 @@
                                             default => $targetRoleModel->type_rol ?? 'Sin rol',
                                         };
 
-                                        $isSelf = (int) $currentUserId === (int) $userItem->userr_id;
-                                        $isCurrentGerente = $currentRoleName === 'GERENTE';
-                                        $isTargetOwner = (int) $ownerUserId === (int) $userItem->userr_id;
-
-                                        $canEdit = !$isTargetOwner || $isSelf;
-                                        $canDelete = !$isSelf && !$isTargetOwner;
-
-                                        if ($isCurrentGerente && in_array($targetRoleName, ['ADMIN', 'ADMINISTRADOR'], true)) {
-                                            $canEdit = false;
-                                            $canDelete = false;
-                                        }
+                                        $canEdit = (bool) ($userItem->can_edit_ui ?? false);
+                                        $canDelete = (bool) ($userItem->can_delete_ui ?? false);
                                     @endphp
 
                                     <span class="role-badge">{{ $displayRole }}</span>
@@ -366,7 +386,8 @@
                                                     @js($userItem->phone),
                                                     @js($userItem->email),
                                                     '{{ $userItem->rol_idfk }}',
-                                                    '{{ $userItem->branch_idfk ?? '' }}'
+                                                    '{{ $userItem->branch_idfk ?? '' }}',
+                                                    @js($userItem->permission_states ?? []) 
                                                 )"
                                             >
                                                 Editar
@@ -425,10 +446,17 @@
                                         @foreach($roles as $rol)
                                             @php
                                                 $roleOptionName = strtoupper(trim((string) $rol->type_rol));
-                                                $managerCanSee = $currentRoleName !== 'GERENTE' || $roleOptionName === 'CAJERO';
+                                                $normalizedRoleOption = \App\Support\UserAccess::normalizeRoleName($roleOptionName);
+
+                                                $canShowRole = match($normalizedRoleOption) {
+                                                    'ADMINISTRADOR' => $access['can_create_admin'],
+                                                    'GERENTE' => $access['can_create_manager'],
+                                                    'CAJERO' => $access['can_create_cashier'],
+                                                    default => false,
+                                                };
                                             @endphp
 
-                                            @if($managerCanSee)
+                                            @if($canShowRole)
                                                 <option value="{{ $rol->rol_id }}" @selected((string) old('rol_idfk') === (string) $rol->rol_id)>
                                                     {{ $rol->type_rol }}
                                                 </option>
@@ -438,15 +466,19 @@
                                 </div>
 
                                 <div class="form-group" id="createBranchGroup" style="display: none;">
-                                    <label for="create_branch_idfk">Sucursal</label>
+                                    <label for="create_branch_idfk">Sucursal (opcional)</label>
                                     <select name="branch_idfk" id="create_branch_idfk" class="form-input">
-                                        <option value="">Selecciona una sucursal</option>
+                                        <option value="">Asignar después</option>
                                         @foreach($branches as $branch)
                                             <option value="{{ $branch->branch_id }}" @selected((string) old('branch_idfk') === (string) $branch->branch_id)>
                                                 {{ $branch->name_branch }}
                                             </option>
                                         @endforeach
                                     </select>
+
+                                    <small id="createBranchHelp" class="text-muted" style="display:block; margin-top:6px;">
+                                        Puedes crear al usuario primero y asignarle sucursal después desde Editar usuario.
+                                    </small>
                                 </div>
 
                                 <div class="form-row">
@@ -505,24 +537,65 @@
 
                                     <select id="edit_rol_idfk" class="form-input">
                                         <option value="">Selecciona un rol</option>
+                                        
                                         @foreach($roles as $rol)
-                                            <option value="{{ $rol->rol_id }}">{{ $rol->type_rol }}</option>
+                                            @php
+                                                $normalizedRoleOption = \App\Support\UserAccess::normalizeRoleName($rol->type_rol);
+
+                                                $canShowRole = match($normalizedRoleOption) {
+                                                    'ADMINISTRADOR' => $access['can_create_admin'] || $access['can_edit_admin'],
+                                                    'GERENTE' => $access['can_create_manager'],
+                                                    'CAJERO' => $access['can_create_cashier'],
+                                                    default => false,
+                                                };
+                                            @endphp
+
+                                            @if($canShowRole)
+                                                <option value="{{ $rol->rol_id }}">{{ $rol->type_rol }}</option>
+                                            @endif
                                         @endforeach
                                     </select>
                                 </div>
 
                                 <div class="form-group" id="editBranchGroup" style="display: none;">
-                                    <label for="edit_branch_idfk">Sucursal</label>
+                                    <label for="edit_branch_idfk">Sucursal (opcional)</label>
 
                                     <input type="hidden" name="branch_idfk" id="edit_branch_idfk_hidden">
 
                                     <select id="edit_branch_idfk" class="form-input">
-                                        <option value="">Selecciona una sucursal</option>
+                                        <option value="">Sin sucursal asignada</option>
                                         @foreach($branches as $branch)
                                             <option value="{{ $branch->branch_id }}">{{ $branch->name_branch }}</option>
                                         @endforeach
                                     </select>
+
+                                    <small class="text-muted" style="display:block; margin-top:6px;">
+                                        Desde aquí puedes cambiar o quitar la sucursal asignada al usuario.
+                                    </small>
                                 </div>
+
+                                @if($access['can_manage_permissions'] && $grantablePermissions->count())
+                                    <div class="form-group">
+                                        <label>Permisos específicos</label>
+
+                                        <div class="form-row">
+                                            @foreach ($grantablePermissions as $permission)
+                                                <div class="form-group">
+                                                    <label>{{ $permission->description_permission }}</label>
+                                                    <select 
+                                                        name="permission_states[{{ $permission->code_permission }}]" 
+                                                        class="form-input permission-state"
+                                                        data-code="{{ $permission->code_permission }}"
+                                                    >
+                                                        <option value="inherit">Heredar del rol</option>
+                                                        <option value="allow">Permitir</option>
+                                                        <option value="deny">Bloquear</option>
+                                                    </select>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
 
                             <div class="modal-footer">
@@ -537,6 +610,7 @@
                     const currentUserId = {{ (int) $currentUserId }};
                     const currentRoleName = @js($currentRoleName);
                     const ownerUserId = {{ (int) $ownerUserId }};
+                    const branchesCount = {{ (int) $branches->count() }};
 
                     function openUserModal() {
                         document.getElementById('userModal').style.display = 'flex';
@@ -547,129 +621,124 @@
                         document.getElementById('userModal').style.display = 'none';
                     }
 
-                    function openEditUserModal(id, name, phone, email, rolId, branchId) {
+                    function openEditUserModal(id, name, phone, email, rolId, branchId, permissionStates = {}) {
                         const isSelf = Number(currentUserId) === Number(id);
                         const isTargetOwner = Number(ownerUserId) === Number(id);
 
                         document.getElementById('edit_name_user').value = name;
                         document.getElementById('edit_phone').value = phone;
                         document.getElementById('edit_email').value = email;
-
-                        document.getElementById('edit_rol_idfk').value = rolId;
-                        document.getElementById('edit_rol_idfk_hidden').value = rolId;
-
-                        document.getElementById('edit_branch_idfk').value = branchId ?? '';
-                        document.getElementById('edit_branch_idfk_hidden').value = branchId ?? '';
-
-                        const isRoleLocked =
-                            isTargetOwner ||
-                            (isSelf && (
-                                currentRoleName === 'GERENTE' ||
-                                currentRoleName === 'ADMIN' ||
-                                currentRoleName === 'ADMINISTRADOR'
-                            ));
-
-                        const isGerenteEditingSelf =
-                            isSelf && currentRoleName === 'GERENTE';
-
                         document.getElementById('editUserForm').action = '/configuracion/usuarios/' + id;
+
+                        const roleSelect = document.getElementById('edit_rol_idfk');
+                        const roleHidden = document.getElementById('edit_rol_idfk_hidden');
+                        const branchSelect = document.getElementById('edit_branch_idfk');
+                        const branchHidden = document.getElementById('edit_branch_idfk_hidden');
+
+                        if (roleSelect) roleSelect.value = rolId ?? '';
+                        if (roleHidden) roleHidden.value = rolId ?? '';
+
+                        if (branchSelect) branchSelect.value = branchId ?? '';
+                        if (branchHidden) branchHidden.value = branchId ?? '';
+
+                        document.querySelectorAll('.permission-state').forEach(function (select) {
+                            const code = select.dataset.code;
+                            const state = permissionStates?.[code] || 'inherit';
+                            select.value = state;
+                        });
+
+                        if ((isSelf && currentRoleName === 'GERENTE') || isTargetOwner) {
+                            if (roleSelect) roleSelect.disabled = true;
+                        } else {
+                            if (roleSelect) roleSelect.disabled = false;
+                        }
+
+                        toggleEditBranchField();
                         document.getElementById('editUserModal').style.display = 'flex';
-
-                        document.getElementById('edit_rol_idfk').disabled = isRoleLocked;
-                        document.getElementById('edit_branch_idfk').disabled = isGerenteEditingSelf;
-
-                        toggleEditBranchField(isGerenteEditingSelf);
                     }
 
                     function closeEditUserModal() {
                         document.getElementById('editUserModal').style.display = 'none';
                     }
 
-                    function getSelectedRoleText(select) {
+                    function roleTextFromSelect(selectId) {
+                        const select = document.getElementById(selectId);
                         if (!select) return '';
-                        const option = select.options[select.selectedIndex];
-                        return option ? option.text.trim().toUpperCase() : '';
+
+                        return select.options[select.selectedIndex]?.text?.trim()?.toUpperCase() || '';
                     }
 
                     function toggleCreateBranchField() {
-                        const roleSelect = document.getElementById('create_rol_idfk');
+                        const selectedText = roleTextFromSelect('create_rol_idfk');
                         const branchGroup = document.getElementById('createBranchGroup');
-                        const branchSelect = document.getElementById('create_branch_idfk');
+                        const branchHelp = document.getElementById('createBranchHelp');
 
-                        if (!roleSelect || !branchGroup || !branchSelect) return;
+                        if (!branchGroup) return;
 
-                        const roleText = getSelectedRoleText(roleSelect);
-                        const show = roleText === 'CAJERO';
+                        const shouldShow = selectedText === 'CAJERO' || selectedText === 'GERENTE';
+                        branchGroup.style.display = shouldShow ? 'block' : 'none';
 
-                        branchGroup.style.display = show ? 'block' : 'none';
+                        if (!shouldShow) {
+                            const select = document.getElementById('create_branch_idfk');
+                            if (select) select.value = '';
+                            return;
+                        }
 
-                        if (!show) {
-                            branchSelect.value = '';
+                        if (branchHelp) {
+                            if (branchesCount === 0) {
+                                branchHelp.textContent = 'Todavía no hay sucursales registradas. Puedes crear el usuario y asignarle una después.';
+                            } else {
+                                branchHelp.textContent = 'La sucursal es opcional al crear. También puedes asignarla después desde Editar usuario.';
+                            }
                         }
                     }
 
-                    function toggleEditBranchField(forceReadOnly = false) {
-                        const roleSelect = document.getElementById('edit_rol_idfk');
+                    function toggleEditBranchField() {
+                        const selectedText = roleTextFromSelect('edit_rol_idfk');
                         const branchGroup = document.getElementById('editBranchGroup');
-                        const branchSelect = document.getElementById('edit_branch_idfk');
+                        const branchHidden = document.getElementById('edit_branch_idfk_hidden');
 
-                        if (!roleSelect || !branchGroup || !branchSelect) return;
+                        if (!branchGroup) return;
 
-                        const roleText = getSelectedRoleText(roleSelect);
-                        const show = roleText === 'CAJERO' || roleText === 'GERENTE';
+                        const shouldShow = selectedText === 'CAJERO' || selectedText === 'GERENTE';
+                        branchGroup.style.display = shouldShow ? 'block' : 'none';
 
-                        branchGroup.style.display = show ? 'block' : 'none';
-
-                        if (!show) {
-                            branchSelect.value = '';
-                            document.getElementById('edit_branch_idfk_hidden').value = '';
-                            return;
-                        }
-
-                        if (forceReadOnly) {
-                            return;
+                        if (!shouldShow && branchHidden) {
+                            branchHidden.value = '';
                         }
                     }
 
                     document.addEventListener('DOMContentLoaded', function () {
-                        const createRoleSelect = document.getElementById('create_rol_idfk');
-                        const editRoleSelect = document.getElementById('edit_rol_idfk');
-                        const editBranchSelect = document.getElementById('edit_branch_idfk');
+                        const createRole = document.getElementById('create_rol_idfk');
+                        const editRole = document.getElementById('edit_rol_idfk');
+                        const editRoleHidden = document.getElementById('edit_rol_idfk_hidden');
+                        const editBranch = document.getElementById('edit_branch_idfk');
+                        const editBranchHidden = document.getElementById('edit_branch_idfk_hidden');
 
-                        if (createRoleSelect) {
-                            createRoleSelect.addEventListener('change', toggleCreateBranchField);
+                        if (createRole) {
+                            createRole.addEventListener('change', toggleCreateBranchField);
                             toggleCreateBranchField();
                         }
 
-                        if (editRoleSelect) {
-                            editRoleSelect.addEventListener('change', function () {
-                                document.getElementById('edit_rol_idfk_hidden').value = this.value;
+                        if (editRole) {
+                            editRole.addEventListener('change', function () {
+                                if (editRoleHidden) {
+                                    editRoleHidden.value = editRole.value;
+                                }
                                 toggleEditBranchField();
                             });
-                            toggleEditBranchField();
                         }
 
-                        if (editBranchSelect) {
-                            editBranchSelect.addEventListener('change', function () {
-                                document.getElementById('edit_branch_idfk_hidden').value = this.value;
+                        if (editBranch) {
+                            editBranch.addEventListener('change', function () {
+                                if (editBranchHidden) {
+                                    editBranchHidden.value = editBranch.value;
+                                }
                             });
                         }
+
+                        toggleEditBranchField();
                     });
-
-                    @if($errors->any() && request('tab') == 'usuarios')
-                        document.addEventListener('DOMContentLoaded', function () {
-                            closeUserModal();
-                            closeEditUserModal();
-
-                            const createRole = document.getElementById('create_rol_idfk');
-                            const createBranch = document.getElementById('create_branch_idfk');
-                            const createBranchGroup = document.getElementById('createBranchGroup');
-
-                            if (createRole) createRole.value = '';
-                            if (createBranch) createBranch.value = '';
-                            if (createBranchGroup) createBranchGroup.style.display = 'none';
-                        });
-                    @endif
                 </script>
 
             @elseif(request('tab') == 'pagos')
@@ -904,6 +973,11 @@
                 </div>
 
             @elseif(request('tab') == 'preferencias')
+                @php
+                    $timezoneOptions = \App\Support\TimezoneCatalog::options();
+                    $currentTimezone = old('timezone', $settings->timezone ?? 'America/Mexico_City');
+                @endphp
+                
                 <div class="settings-card">
                     <h2>⚙️ Preferencias</h2>
                     <p>Configura tus preferencias generales del sistema.</p>
@@ -917,16 +991,35 @@
 
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>Zona horaria</label>
-                                    <select name="timezone" class="form-input">
-                                        <option value="America/Mexico_City" @selected($settings->timezone == 'America/Mexico_City')>America/Mexico_City</option>
-                                        <option value="America/Tijuana" @selected($settings->timezone == 'America/Tijuana')>America/Tijuana</option>
-                                        <option value="America/Bogota" @selected($settings->timezone == 'America/Bogota')>America/Bogota</option>
-                                        <option value="America/New_York" @selected($settings->timezone == 'America/New_York')>America/New_York</option>
-                                        <option value="Europe/Madrid" @selected($settings->timezone == 'Europe/Madrid')>Europe/Madrid</option>
-                                    </select>
-                                </div>
+                                    <label for="timezone">Zona horaria</label>
 
+                                    <input
+                                        type="text"
+                                        name="timezone"
+                                        id="timezone"
+                                        list="timezoneList"
+                                        class="form-input"
+                                        value="{{ $currentTimezone }}"
+                                        placeholder="Ej. America/Mexico_City"
+                                        autocomplete="off"
+                                        required
+                                    >
+
+                                    <datalist id="timezoneList">
+                                        @foreach($timezoneOptions as $option)
+                                            <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+                                        @endforeach    
+                                    </datalist>
+
+                                    <small style="display:block; margin-top:8px; opacity:.8; font-size:12px;">
+                                        Puedes escribir y buscar zonas como
+                                        <strong>America/Mexico_City</strong>,
+                                        <strong>America/Tijuana</strong>,
+                                        <strong>Europe/Madrid</strong> o
+                                        <strong>Asia/Tokyo</strong>.
+                                    </small>
+                                </div>
+                                
                                 <div class="form-group">
                                     <label>Formato de fecha</label>
                                     <select name="date_format" class="form-input">
@@ -1118,6 +1211,10 @@
                             @endif
                         </div>
 
+                        <div class="preferences-actions">
+                            <button type="submit" class="btn-save">Guardar preferencias</button>
+                        </div>
+
                         <div class="inner-card" style="margin-top: 18px;">
                             <h3>Resumen actual</h3>
                             <p>Configuración activa del sistema.</p>
@@ -1145,10 +1242,6 @@
                                     <input type="text" class="form-input" value="{{ $settings->price_decimals }}" readonly>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="preferences-actions">
-                            <button type="submit" class="btn-save">Guardar preferencias</button>
                         </div>
                     </form>
 
@@ -1197,6 +1290,123 @@
 
                         syncSelectableCards('printer_width', '.printer-option');
                         syncSelectableCards('theme', '.theme-card');
+
+                        const hiddenInput = document.getElementById('timezone');
+                        const textInput = document.getElementById('timezone_search');
+                        const dropdown = document.getElementById('timezone_dropdown');
+                        const toggle = document.getElementById('timezone_toggle');
+                        const options = Array.from(document.querySelectorAll('.timezone-option'));
+
+                        if (!hiddenInput || !textInput || !dropdown || !toggle || !options.length) {
+                            return;
+                        }
+
+                        function openDropdown() {
+                            dropdown.classList.add('show');
+                        }
+
+                        function closeDropdown() {
+                            dropdown.classList.remove('show');
+                        }
+
+                        function selectOption(button) {
+                            const value = button.dataset.value || '';
+                            const label = button.dataset.label || value;
+
+                            hiddenInput.value = value;
+                            textInput.value = label;
+
+                            options.forEach((options) => option.classList.remove('selected'));
+                            button.classList.add('selected');
+
+                            closeDropdown();
+                        }
+
+                        function filterOptions() {
+                            const search = textInput.value.trim().toLowerCase();
+
+                            let visibleCount = 0;
+
+                            options.forEach((option) => {
+                                const value = (option.dataset.value || '').toLowerCase();
+                                const label = (option.dataset.label || '').toLowerCase();
+                                const matches = search === '' value.includes(search) || label.includes(search);
+
+                                options.style.display = matches ? 'block' : 'none';
+
+                                if (matches) {
+                                    visibleCount++;
+                                }
+                            });
+
+                            if (visibleCount > 0) {
+                                openDropdown();
+                            } else {
+                                closeDropdown();
+                            }
+                        }
+
+                        function restoreSelectedLabel() {
+                            const selected = options.find((option) => option.dataset.value === hiddenInput.value);
+
+                            if (selected) {
+                                textInput.value = selected.dataset.label || selected.dataset.value || '';
+                                option.forEach((option) => option.classList.remove('selected'));
+                                selected.classList.add('selected');
+                            }
+                        }
+
+                        toggle.addEventListener('click', function () {
+                            if (dropdwon.classList.contains('show')) {
+                                closeDropdown();
+                            } else {
+                                filterOptions();
+                                openDropdown();
+                                textInput.focus();
+                            }
+                        });
+
+                        textInput.addEventListener('focus', function () {
+                            filterOptions();
+                            openDropdown();
+                        });
+
+                        textInput.addEventListener('input', filterOptions);
+
+                        textInput.addEventListener('blur', function () {
+                            setTimeout(() => {
+                               const typed = textInput.value.trim().toLowerCase();
+                               
+                               const exactMatch = options.find((option) => {
+                                    const value = (option.dataset.value || '').toLowerCase();
+                                    const label = (option.dataset.label || '').toLowerCase();
+
+                                    return value === typed || label === typed;
+                                });
+
+                                if (exactMatch) {
+                                    selectOption(exactMatch);
+                                } else {
+                                    restoreSelectedLabel();
+                                    closeDropdown();
+                                }
+                            }, 150);
+                        });
+
+                        document.addEventListener('click', function (event) {
+                            const inside = event.target.closest('.timezone-field');
+                            if (!inside) {
+                                closeDropdown();
+                            }
+                        });
+
+                        options.forEach((options) => {
+                            options.addEventListener('click', function  () {
+                                selectOption(option);
+                            });
+                        });
+
+                        restoreSelectedLabel();
 
                         const clienteDigitalConfig = {
                             companyId: {{ $clientedigitalCompanyId }},

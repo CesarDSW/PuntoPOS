@@ -7,6 +7,13 @@
 @endpush
 
 @section('content')
+@php
+    $reportsAccess = [
+        'view' => \App\Support\UserAccess::has(auth()->user(), 'reports.view'),
+        'export' => \App\Support\UserAccess::has(auth()->user(), 'reports.export'),
+        'profit_view' => \App\Support\UserAccess::has(auth()->user(), 'reports.profit.view'),
+    ];
+@endphp
 
 <div class="reports-wrap">
     <div class="reports-header">
@@ -23,97 +30,102 @@
                 <option value="30d">Últimos 30 días</option>
                 <option value="90d">Últimos 90 días</option>
             </select>
-            <button type="button" class="btn" id="exportPdfButton">Exportar PDF</button>
+
+            @if($reportsAccess['export'])
+                <button type="button" class="btn" id="exportPdfButton">Exportar PDF</button>
+            @endif
         </div>
     </div>
 
-    <div class="summary-grid">
-        <div class="summary-card">
-            <div class="summary-top">
-                <div>
-                    <div class="summary-label">Ingresos totales</div>
-                    <div class="summary-value" id="summaryIncome">$0</div>
+    @if($reportsAccess['profit_view'])
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="summary-top">
+                    <div>
+                        <div class="summary-label">Ingresos totales</div>
+                        <div class="summary-value" id="summaryIncome">$0</div>
+                    </div>
+                    <span class="change-badge change-neutral" id="summaryIncomeChange">0%</span>
                 </div>
-                <span class="change-badge change-neutral" id="summaryIncomeChange">0%</span>
+                <div class="summary-note" id="summaryIncomeNote">Últimos 6 meses</div>
             </div>
-            <div class="summary-note" id="summaryIncomeNote">Últimos 6 meses</div>
+
+            <div class="summary-card">
+                <div class="summary-top">
+                    <div>
+                        <div class="summary-label">Utilidad neta</div>
+                        <div class="summary-value" id="summaryProfit">$0</div>
+                    </div>
+                    <span class="change-badge change-neutral" id="summaryProfitChange">0%</span>
+                </div>
+                <div class="summary-note">Después de costos</div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-top">
+                    <div>
+                        <div class="summary-label">Margen promedio</div>
+                        <div class="summary-value" id="summaryMargin">0%</div>
+                    </div>
+                    <span class="change-badge change-neutral" id="summaryMarginChange">0%</span>
+                </div>
+                <div class="summary-note">De utilidad</div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-top">
+                    <div>
+                        <div class="summary-label">ROI</div>
+                        <div class="summary-value" id="summaryRoi">0%</div>
+                    </div>
+                    <span class="change-badge change-neutral" id="summaryRoiChange">0%</span>
+                </div>
+                <div class="summary-note">Retorno de inversión</div>
+            </div>
         </div>
 
-        <div class="summary-card">
-            <div class="summary-top">
-                <div>
-                    <div class="summary-label">Utilidad neta</div>
-                    <div class="summary-value" id="summaryProfit">$0</div>
+        <div class="chart-grid-main">
+            <div class="chart-card">
+                <div class="chart-head">
+                    <div class="chart-title">Ventas vs Costos</div>
+                    <div class="chart-subtitle">Comparativa mensual en pesos</div>
                 </div>
-                <span class="change-badge change-neutral" id="summaryProfitChange">0%</span>
-            </div>
-            <div class="summary-note">Después de costos</div>
-        </div>
-
-        <div class="summary-card">
-            <div class="summary-top">
-                <div>
-                    <div class="summary-label">Margen promedio</div>
-                    <div class="summary-value" id="summaryMargin">0%</div>
-                </div>
-                <span class="change-badge change-neutral" id="summaryMarginChange">0%</span>
-            </div>
-            <div class="summary-note">De utilidad</div>
-        </div>
-
-        <div class="summary-card">
-            <div class="summary-top">
-                <div>
-                    <div class="summary-label">ROI</div>
-                    <div class="summary-value" id="summaryRoi">0%</div>
-                </div>
-                <span class="change-badge change-neutral" id="summaryRoiChange">0%</span>
-            </div>
-            <div class="summary-note">Retorno de inversión</div>
-        </div>
-    </div>
-
-    <div class="chart-grid-main">
-        <div class="chart-card">
-            <div class="chart-head">
-                <div class="chart-title">Ventas vs Costos</div>
-                <div class="chart-subtitle">Comparativa mensual en pesos</div>
-            </div>
-            <div class="chart-body">
-                <div class="bars-chart-wrap">
-                    <div class="bars-grid" id="salesVsCostsChart"></div>
-                    <div class="chart-legend">
-                        <div class="legend-item">
-                            <span class="legend-dot legend-sales"></span>
-                            <span>Ventas</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-dot legend-costs"></span>
-                            <span>Costos</span>
+                <div class="chart-body">
+                    <div class="bars-chart-wrap">
+                        <div class="bars-grid" id="salesVsCostsChart"></div>
+                        <div class="chart-legend">
+                            <div class="legend-item">
+                                <span class="legend-dot legend-sales"></span>
+                                <span>Ventas</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot legend-costs"></span>
+                                <span>Costos</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="chart-card">
-            <div class="chart-head">
-                <div class="chart-title">Ventas por categoría</div>
-                <div class="chart-subtitle">Distribución porcentual</div>
-            </div>
-            <div class="chart-body">
-                <div class="donut-wrap">
-                    <div class="donut-chart" id="categoryDonut">
-                        <div class="donut-center">
-                            <div class="donut-center-value" id="categoryDonutTotal">$0</div>
-                            <div class="donut-center-label">Total</div>
+            <div class="chart-card">
+                <div class="chart-head">
+                    <div class="chart-title">Ventas por categoría</div>
+                    <div class="chart-subtitle">Distribución porcentual</div>
+                </div>
+                <div class="chart-body">
+                    <div class="donut-wrap">
+                        <div class="donut-chart" id="categoryDonut">
+                            <div class="donut-center">
+                                <div class="donut-center-value" id="categoryDonutTotal">$0</div>
+                                <div class="donut-center-label">Total</div>
+                            </div>
                         </div>
+                        <div class="category-legend" id="categoryLegend"></div>
                     </div>
-                    <div class="category-legend" id="categoryLegend"></div>
                 </div>
             </div>
         </div>
-    </div>
+    @endif
 
     <div class="chart-card">
         <div class="chart-head">
@@ -137,17 +149,21 @@
             <div class="list-card-body" id="topProductsList"></div>
         </div>
 
-        <div class="list-card">
-            <div class="chart-head">
-                <div class="chart-title">Métodos de pago preferidos</div>
-                <div class="chart-subtitle">Distribución por monto cobrado</div>
+        @if($reportsAccess['profit_view'])
+            <div class="list-card">
+                <div class="chart-head">
+                    <div class="chart-title">Métodos de pago preferidos</div>
+                    <div class="chart-subtitle">Distribución por monto cobrado</div>
+                </div>
+                <div class="list-card-body" id="paymentMethodsList"></div>
             </div>
-            <div class="list-card-body" id="paymentMethodsList"></div>
-        </div>
+        @endif
     </div>
 </div>
 
 <script>
+    const reportsAccess = @json($reportsAccess);
+
     const reportsState = {
         period: '6m',
         categoryColors: ['#2340b3', '#0f172a', '#64748b', '#94a3b8', '#cbd5e1', '#818cf8']
@@ -205,19 +221,28 @@
 
     function setChangeBadge(id, value) {
         const el = document.getElementById(id);
+        if (!el) return;
         el.textContent = signedPercent(value);
         el.className = `change-badge ${badgeClass(value)}`;
     }
 
     async function loadSummary() {
+        if (!reportsAccess.profit_view) return;
+
         const { response, data } = await apiFetch(`/api/reports/summary?${currentQuery()}`);
         if (!response.ok) return;
 
-        document.getElementById('summaryIncome').textContent = money(data.income?.value ?? 0);
-        document.getElementById('summaryProfit').textContent = money(data.profit?.value ?? 0);
-        document.getElementById('summaryMargin').textContent = percent(data.margin?.value ?? 0);
-        document.getElementById('summaryRoi').textContent = percent(data.roi?.value ?? 0);
-        document.getElementById('summaryIncomeNote').textContent = data.period?.label ?? 'Periodo';
+        const income = document.getElementById('summaryIncome');
+        const profit = document.getElementById('summaryProfit');
+        const margin = document.getElementById('summaryMargin');
+        const roi = document.getElementById('summaryRoi');
+        const incomeNote = document.getElementById('summaryIncomeNote');
+
+        if (income) income.textContent = money(data.income?.value ?? 0);
+        if (profit) profit.textContent = money(data.profit?.value ?? 0);
+        if (margin) margin.textContent = percent(data.margin?.value ?? 0);
+        if (roi) roi.textContent = percent(data.roi?.value ?? 0);
+        if (incomeNote) incomeNote.textContent = data.period?.label ?? 'Periodo';
 
         setChangeBadge('summaryIncomeChange', data.income?.change_percent ?? 0);
         setChangeBadge('summaryProfitChange', data.profit?.change_percent ?? 0);
@@ -226,8 +251,11 @@
     }
 
     async function loadSalesVsCosts() {
+        if (!reportsAccess.profit_view) return;
+
         const { response, data } = await apiFetch(`/api/reports/sales-vs-costs?${currentQuery()}`);
         const container = document.getElementById('salesVsCostsChart');
+        if (!container) return;
 
         if (!response.ok || !Array.isArray(data) || data.length === 0) {
             container.innerHTML = `<div class="empty-state">No hay datos para mostrar.</div>`;
@@ -258,18 +286,24 @@
     }
 
     async function loadCategories() {
+        if (!reportsAccess.profit_view) return;
+
         const { response, data } = await apiFetch(`/api/reports/categories?${currentQuery()}`);
         const donut = document.getElementById('categoryDonut');
         const legend = document.getElementById('categoryLegend');
 
+        if (!donut || !legend) return;
+
         if (!response.ok || !Array.isArray(data.items) || data.items.length === 0) {
             donut.style.background = 'conic-gradient(#e2e8f0 0 100%)';
-            document.getElementById('categoryDonutTotal').textContent = money(0);
+            const total = document.getElementById('categoryDonutTotal');
+            if (total) total.textContent = money(0);
             legend.innerHTML = `<div class="empty-state">No hay categorías para mostrar.</div>`;
             return;
         }
 
-        document.getElementById('categoryDonutTotal').textContent = money(data.total_amount ?? 0);
+        const total = document.getElementById('categoryDonutTotal');
+        if (total) total.textContent = money(data.total_amount ?? 0);
 
         let accumulated = 0;
         const parts = data.items.map((item, index) => {
@@ -299,6 +333,8 @@
         const { response, data } = await apiFetch(`/api/reports/peak-hours?${currentQuery()}`);
         const svg = document.getElementById('peakHoursSvg');
         const labels = document.getElementById('peakHoursLabels');
+
+        if (!svg || !labels) return;
 
         if (!response.ok || !Array.isArray(data) || data.length === 0) {
             svg.innerHTML = '';
@@ -346,6 +382,8 @@
         const { response, data } = await apiFetch(`/api/reports/top-products?${currentQuery()}&limit=5`);
         const container = document.getElementById('topProductsList');
 
+        if (!container) return;
+
         if (!response.ok || !Array.isArray(data) || data.length === 0) {
             container.innerHTML = `<div class="empty-state">No hay productos para mostrar.</div>`;
             return;
@@ -363,8 +401,12 @@
     }
 
     async function loadPaymentMethods() {
+        if (!reportsAccess.profit_view) return;
+
         const { response, data } = await apiFetch(`/api/reports/payment-methods?${currentQuery()}`);
         const container = document.getElementById('paymentMethodsList');
+
+        if (!container) return;
 
         if (!response.ok || !Array.isArray(data.items) || data.items.length === 0) {
             container.innerHTML = `<div class="empty-state">No hay métodos de pago para mostrar.</div>`;
@@ -386,28 +428,42 @@
     }
 
     async function loadReports() {
-        await Promise.all([
-            loadSummary(),
-            loadSalesVsCosts(),
-            loadCategories(),
+        const tasks = [
             loadPeakHours(),
-            loadTopProducts(),
-            loadPaymentMethods()
-        ]);
+            loadTopProducts()
+        ];
+
+        if (reportsAccess.profit_view) {
+            tasks.push(
+                loadSummary(),
+                loadSalesVsCosts(),
+                loadCategories(),
+                loadPaymentMethods()
+            );
+        }
+
+        await Promise.all(tasks);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         const periodSelect = document.getElementById('reportsPeriod');
         const exportButton = document.getElementById('exportPdfButton');
 
-        periodSelect.addEventListener('change', () => {
-            reportsState.period = periodSelect.value;
-            loadReports();
-        });
+        if (periodSelect) {
+            periodSelect.addEventListener('change', () => {
+                reportsState.period = periodSelect.value;
+                loadReports();
+            });
+        }
 
-        exportButton.addEventListener('click', () => {
-            window.print();
-        });
+        if (exportButton) {
+            exportButton.addEventListener('click', () => {
+                if (!reportsAccess.export) return;
+                window.print();
+            });
+        }
+
+        if (!reportsAccess.view) return;
 
         loadReports();
     });

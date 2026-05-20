@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Inventory;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Support\UserAccess;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -27,6 +28,15 @@ class InventoryController extends Controller
         }
 
         return $user;
+    }
+
+    private function authorizeInventoryView(): void
+    {
+        $user = Auth::user();
+
+        if (!$user || !UserAccess::has($user, 'inventory.view')) {
+            abort(403, 'No autorizado para ver inventario.');
+        }
     }
 
     private function getBranchOrFail(int $branchId, int $companyId)
@@ -80,6 +90,8 @@ class InventoryController extends Controller
 
     public function summary(Request $request)
     {
+        $this->authorizeInventoryView();
+
         $validated = $request->validate([
             'branch_id' => ['nullable', 'integer', 'exists:branch,branch_id'],
         ]);
@@ -121,6 +133,8 @@ class InventoryController extends Controller
 
     public function lowStock(Request $request)
     {
+        $this->authorizeInventoryView();
+
         $validated = $request->validate([
             'branch_id' => ['nullable', 'integer', 'exists:branch,branch_id'],
             'limit'     => ['nullable', 'integer', 'min:1', 'max:100'],
@@ -178,6 +192,8 @@ class InventoryController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorizeInventoryView();
+
         $validated = $request->validate([
             'branch_id' => ['nullable', 'integer', 'exists:branch,branch_id'],
             'search'    => ['nullable', 'string', 'max:100'],
@@ -253,6 +269,8 @@ class InventoryController extends Controller
 
     public function show(Request $request, int $productId)
     {
+        $this->authorizeInventoryView();
+
         $user = $this->getAuthenticatedUser();
         $companyId = (int) $user->company_idfk;
 
@@ -306,45 +324,23 @@ class InventoryController extends Controller
 
     public function reasons(Request $request)
     {
-        $validated = $request->validate([
-            'type' => ['required', 'string'],
-        ]);
+        $this->authorizeInventoryView();
 
-        $typeInput = strtoupper(trim($validated['type']));
+        $typeInput = strtoupper(trim((string) $request->query('type', 'ENTRADA')));
 
         $type = match ($typeInput) {
             'IN', 'ENTRADA' => 'ENTRADA',
             'OUT', 'SALIDA' => 'SALIDA',
-            default => null,
+            default => 'ENTRADA',
         };
 
-        if (!$type) {
-            throw ValidationException::withMessages([
-                'type' => ['El tipo debe ser ENTRADA o SALIDA.'],
-            ]);
-        }
-
-        $reasons = [
-            'ENTRADA' => [
-                'Compra a proveedor',
-                'Devolución de cliente',
-                'Corrección de inventario',
-                'Transferencia recibida',
-                'Otro',
-            ],
-            'SALIDA' => [
-                'Producto dañado',
-                'Producto vencido',
-                'Merma',
-                'Uso interno',
-                'Corrección de inventario',
-                'Otro',
-            ],
-        ];
+        $reasons = $type === 'ENTRADA'
+            ? ['Compra', 'Devolución de cliente', 'Ajuste positivo', 'Transferencia recibida', 'Otro']
+            : ['Venta', 'Merma', 'Producto dañado', 'Ajuste negativo', 'Otro'];
 
         return response()->json([
             'type' => $type,
-            'reasons' => $reasons[$type],
+            'reasons' => $reasons,
         ]);
     }
 }

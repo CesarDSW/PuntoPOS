@@ -8,6 +8,26 @@
 
 @section('content')
 
+@php 
+    $catalogAccess = [
+        'view' => \App\Support\UserAccess::has(auth()->user(), 'catalog.view'),
+        
+        'create_product' => \App\Support\UserAccess::has(auth()->user(), 'catalog.products.create'),
+        'edit_product' => \App\Support\UserAccess::has(auth()->user(), 'catalog.products.edit'),
+        'delete_product' => \App\Support\UserAccess::has(auth()->user(), 'catalog.products.delete'),
+
+        'create_service' => \App\Support\UserAccess::has(auth()->user(), 'catalog.services.create'),
+        'edit_service' => \App\Support\UserAccess::has(auth()->user(), 'catalog.services.edit'),
+        'delete_service' => \App\Support\UserAccess::has(auth()->user(), 'catalog.services.delete'),
+
+        'create_category' => \App\Support\UserAccess::has(auth()->user(), 'catalog.categories.create'),
+        'edit_category' => \App\Support\UserAccess::has(auth()->user(), 'catalog.categories.edit'),
+        'delete_category' => \App\Support\UserAccess::has(auth()->user(), 'catalog.categories.delete'),
+
+        'mass_import' => \App\Support\UserAccess::has(auth()->user(), 'catalog.mass_import'),
+    ];
+@endphp
+
 <div class="catalog-wrap">
     <div class="catalog-header">
         <div>
@@ -16,10 +36,21 @@
         </div>
 
         <div class="catalog-actions">
-            <button class="btn btn-primary" type="button" onclick="openItemModal('product')">Nuevo producto</button>
-            <button class="btn" type="button" onclick="openItemModal('service')">Nuevo servicio</button>
-            <button class="btn" type="button" onclick="openCategoryModal()">Nueva categoría</button>
-            <button class="btn" type="button" onclick="openBulkModal()">Carga masiva</button>
+            @if($catalogAccess['create_product'])
+                <button class="btn btn-primary" type="button" onclick="openItemModal('product')">Nuevo producto</button>
+            @endif
+
+            @if($catalogAccess['create_service'])
+                <button class="btn" type="button" onclick="openItemModal('service')">Nuevo servicio</button>
+            @endif
+
+            @if($catalogAccess['create_category'])
+                <button class="btn" type="button" onclick="openCategoryModal()">Nueva categoría</button>
+            @endif
+            
+            @if($catalogAccess['mass_import'])
+                <button class="btn" type="button" onclick="openBulkModal()">Carga masiva</button>
+            @endif   
         </div>
     </div>
 
@@ -273,7 +304,48 @@
     </div>
 </div>
 
+<div class="modal" id="confirmActionModal">
+    <div class="modal-box confirm-modal-box">
+        <div class="modal-header confirm-modal-header">
+            <div>
+                <div class="confirm-modal-title" id="confirmActionTitle">Confirmar acción</div>
+                <div class="confirm-modal-subtitle" id="confirmActionSubtitle">Verifica antes de continuar</div>
+            </div>
+            <button class="btn confirm-close-btn" type="button" onclick="closeConfirmModal()">Cerrar</button>
+        </div>
+
+        <div class="modal-body confirm-modal-body">
+            <div class="confirm-info-card">
+                <div class="confirm-info-row">
+                    <span class="confirm-info-label">Acción</span>
+                    <strong id="confirmActionInfo">Acción del sistema</strong>
+                </div>
+
+                <div class="confirm-info-row">
+                    <span class="confirm-info-label">Estado</span>
+                    <strong id="confirmActionStatus">Listo para continuar</strong>
+                </div>
+            </div>
+
+            <div class="confirm-message-wrap">
+                <label class="confirm-message-label">Mensaje</label>
+                <div class="confirm-message-box" id="confirmActionMessage">
+                    ¿Deseas continuar con esta acción?
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer confirm-modal-footer">
+            <button class="btn confirm-cancel-btn" type="button" onclick="closeConfirmModal()">Cancelar</button>
+            <button class="btn btn-primary confirm-accept-btn" type="button" id="confirmActionButton">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+
 <script>
+    const catalogAccess = @json($catalogAccess);
+
     let catalogItems = [];
     let categories = [];
     let editingItem = null;
@@ -377,11 +449,11 @@
 
             let actions = '';
 
-            if (category.can_edit) {
+            if (category.can_edit && catalogAccess.edit_category) {
                 actions += `<button class="btn" type="button" onclick="editCategory(${category.category_id})">Editar</button>`;
             }
 
-            if (category.can_delete) {
+            if (category.can_delete && catalogAccess.delete_category) {
                 actions += `<button class="btn btn-danger" type="button" onclick="deleteCategory(${category.category_id})">Eliminar</button>`;
             }
 
@@ -443,13 +515,40 @@
                 ? '<span class="badge badge-green">Activo</span>'
                 : '<span class="badge badge-red">Inactivo</span>';
 
-            const editFn = item.item_type === 'product'
-                ? `editProduct(${item.item_id})`
-                : `editService(${item.item_id})`;
+            const canEdit = item.item_type === 'product'
+                ? catalogAccess.edit_product
+                : catalogAccess.edit_service;
 
-            const deleteFn = item.item_type === 'product'
-                ? `deleteProduct(${item.item_id})`
-                : `deleteService(${item.item_id})`;
+            const canDelete = item.item_type === 'product'
+                ? catalogAccess.delete_product
+                : catalogAccess.delete_service;
+
+            let actions = '';
+
+            if (canEdit) {
+                const editFn = item.item_type === 'product'
+                    ? `editProduct(${item.item_id})`
+                    : `editService(${item.item_id})`;
+
+                const deactivateFn = item.item_type === 'product'
+                    ? `deactivateProduct(${item.item_id})`
+                    : `deactivateService(${item.item_id})`;
+
+                actions += `<button class="btn" type="button" onclick="${editFn}">Editar</button>`;
+                actions += `<button class="btn btn-warning" type="button" onclick="${deactivateFn}">Desactivar</button>`;
+            }
+
+            if (canDelete) {
+                const deleteFn = item.item_type === 'product'
+                    ? `deleteProduct(${item.item_id})`
+                    : `deleteService(${item.item_id})`;
+
+                actions += `<button class="btn btn-danger" type="button" onclick="${deleteFn}">Eliminar</button>`;
+            }
+
+            if (!actions) {
+                actions = `<span class="text-muted">Sin acciones</span>`;
+            }
 
             return `
                 <tr>
@@ -465,11 +564,7 @@
                     <td>${item.item_type === 'product' ? item.stock_display : 'N/A'}</td>
                     <td>${statusBadge}</td>
                     <td>
-                        <div class="table-actions">
-                            <button class="btn" type="button" onclick="${editFn}">Editar</button>
-                            <button class="btn btn-warning" type="button" onclick="${item.item_type === 'product' ? `deactivateProduct(${item.item_id})` : `deactivateService(${item.item_id})`}">Desactivar</button>
-                            <button class="btn btn-danger" type="button" onclick="${deleteFn}">Eliminar</button>
-                        </div>
+                        <div class="table-actions">${actions}</div>
                     </td>
                 </tr>
             `;
@@ -528,6 +623,9 @@
     }
 
     function openItemModal(type = 'product') {
+        if (type === 'product' && !catalogAccess.create_product) return;
+        if (type === 'service' && !catalogAccess.create_service) return;
+
         resetItemForm();
         document.getElementById('itemType').value = type;
 
@@ -544,6 +642,8 @@
     }
 
     async function editProduct(id) {
+        if (!catalogAccess.edit_product) return;
+
         hideError('itemErrorBox');
         const { response, data } = await apiFetch(`/api/products/${id}`);
 
@@ -574,6 +674,8 @@
     }
 
     async function editService(id) {
+        if (!catalogAccess.edit_service) return;
+
         hideError('itemErrorBox');
         const { response, data } = await apiFetch(`/api/services/${id}`);
 
@@ -608,6 +710,11 @@
 
         const type = editingItem ? editingItem.type : document.getElementById('itemType').value;
         const isProduct = type === 'product';
+
+        if (!editingItem && isProduct && !catalogAccess.create_product) return;
+        if (!editingItem && !isProduct && !catalogAccess.create_service) return;
+        if (editingItem && isProduct && !catalogAccess.edit_product) return;
+        if (editingItem && !isProduct && !catalogAccess.edit_service) return;
 
         const name = document.getElementById('itemName').value.trim();
         const code = document.getElementById('itemCode').value.trim();
@@ -707,6 +814,8 @@
     }
 
     function openCategoryModal() {
+        if (!catalogAccess.create_category) return;
+
         resetCategoryForm();
         document.getElementById('categoryModal').classList.add('show');
     }
@@ -716,6 +825,8 @@
     }
 
     async function editCategory(id) {
+        if (!catalogAccess.edit_category) return;
+
         hideError('categoryErrorBox');
         const { response, data } = await apiFetch(`/api/categories/${id}`);
 
@@ -737,6 +848,9 @@
 
     async function submitCategoryForm() {
         hideError('categoryErrorBox');
+
+        if (!editingCategory && !catalogAccess.create_category) return;
+        if (editingCategory && !catalogAccess.edit_category) return;
 
         const name = document.getElementById('categoryName').value.trim();
         const description = document.getElementById('categoryDescription').value.trim();
@@ -795,112 +909,191 @@
         await loadCatalogPage();
     }
 
+    let confirmActionCallback = null;
+
+    function openConfirmModal(
+        message,
+        onConfirm,
+        title = 'Confirmar acción',
+        subtitle = 'Verifica antes de continuar',
+        actionText = 'Acción del sistema',
+        statusText = 'Listo para continuar',
+        buttonText = 'Confirmar'
+    ) {
+        document.getElementById('confirmActionTitle').textContent = title;
+        document.getElementById('confirmActionSubtitle').textContent = subtitle;
+        document.getElementById('confirmActionInfo').textContent = actionText;
+        document.getElementById('confirmActionStatus').textContent = statusText;
+        document.getElementById('confirmActionMessage').textContent = message;
+        document.getElementById('confirmActionButton').textContent = buttonText;
+
+        document.getElementById('confirmActionModal').classList.add('show');
+        confirmActionCallback = onConfirm;
+    }
+
+    function closeConfirmModal() {
+        document.getElementById('confirmActionModal').classList.remove('show');
+        confirmActionCallback = null;
+    }
+
     async function deactivateProduct(id) {
-        if (!confirm('¿Deseas desactivar este producto en la sucursal actual?')) return;
+        if (!catalogAccess.edit_product) return;
 
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        openConfirmModal(
+            '¿Deseas desactivar este producto en la sucursal actual?',
+            async () => {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        const { response, data } = await apiFetch(`/api/products/${id}/deactivate`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
-            }
-        });
+                const { response, data } = await apiFetch(`/api/products/${id}/deactivate`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    }
+                });
 
-        if (!response.ok) {
-            alert(data.errors?.product_id?.[0] || data.message || 'No se pudo desactivar el producto.');
-            return;
-        }
+                if (!response.ok) {
+                    alert(data.errors?.product_id?.[0] || data.message || 'No se pudo desactivar el producto.');
+                    return;
+                }
 
-        await loadCatalogPage();
+                await loadCatalogPage();
+            },
+            'Desactivar producto',
+            'Confirma la acción para actualizar su estado en la sucursal actual',
+            'Desactivación de producto',
+            'Listo para continuar',
+            'Confirmar desactivación'
+        );
     }
 
     async function deactivateService(id) {
-        if (!confirm('¿Deseas desactivar este servicio?')) return;
+        if (!catalogAccess.edit_service) return;
 
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        openConfirmModal(
+            '¿Deseas desactivar este servicio?',
+            async () => {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        const { response, data } = await apiFetch(`/api/services/${id}/deactivate`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
-            }
-        });
+                const { response, data } = await apiFetch(`/api/services/${id}/deactivate`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    }
+                });
 
-        if (!response.ok) {
-            alert(data.message || 'No se pudo desactivar el servicio.');
-            return;
-        }
+                if (!response.ok) {
+                    alert(data.message || 'No se pudo desactivar el servicio.');
+                    return;
+                }
 
-        await loadCatalogPage();
+                await loadCatalogPage();
+            },
+            'Desactivar servicio',
+            'Confirma la acción para actualizar su estado',
+            'Desactivación de servicio',
+            'Listo para continuar',
+            'Confirmar desactivación'
+        );
     }
 
     async function deleteCategory(id) {
-        if (!confirm('¿Deseas eliminar definitivamente esta categoría?')) return;
+        if (!catalogAccess.delete_category) return;
 
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        openConfirmModal(
+            '¿Deseas eliminar definitivamente esta categoría?',
+            async () => {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        const { response, data } = await apiFetch(`/api/categories/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
-            }
-        });
+                const { response, data } = await apiFetch(`/api/categories/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    }
+                });
 
-        if (!response.ok) {
-            alert(data.errors?.category_id?.[0] || data.message || 'No se pudo eliminar la categoría.');
-            return;
-        }
+                if (!response.ok) {
+                    alert(data.errors?.category_id?.[0] || data.message || 'No se pudo eliminar la categoría.');
+                    return;
+                }
 
-        await loadCatalogPage();
+                await loadCatalogPage();
+            },
+            'Eliminar categoría',
+            'Esta acción eliminará la categoría del sistema',
+            'Eliminación de categoría',
+            'Listo para eliminar',
+            'Confirmar eliminación'
+        );
     }
 
     async function deleteProduct(id) {
-        if (!confirm('¿Deseas eliminar este producto de la sucursal actual? Si es su última sucursal, se eliminará completamente.')) return;
+        if (!catalogAccess.delete_product) return;
 
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        openConfirmModal(
+            '¿Deseas eliminar este producto de la sucursal actual? Si es su última sucursal, se eliminará completamente.',
+            async () => {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        const { response, data } = await apiFetch(`/api/products/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
-            }
-        });
+                const { response, data } = await apiFetch(`/api/products/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    }
+                });
 
-        if (!response.ok) {
-            alert(data.errors?.product_id?.[0] || data.message || 'No se pudo eliminar el producto.');
-            return;
-        }
+                if (!response.ok) {
+                    alert(data.errors?.product_id?.[0] || data.message || 'No se pudo eliminar el producto.');
+                    return;
+                }
 
-        await loadCatalogPage();
+                await loadCatalogPage();
+            },
+            'Eliminar producto',
+            'Esta acción puede afectar su disponibilidad en el catálogo',
+            'Eliminación de producto',
+            'Listo para eliminar',
+            'Confirmar eliminación'
+        );
     }
 
     async function deleteService(id) {
-        if (!confirm('¿Deseas eliminar definitivamente este servicio?')) return;
+        if (!catalogAccess.delete_service) return;
 
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        openConfirmModal(
+            '¿Deseas eliminar definitivamente este servicio?',
+            async () => {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        const { response, data } = await apiFetch(`/api/services/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
-            }
-        });
+                const { response, data } = await apiFetch(`/api/services/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    }
+                });
 
-        if (!response.ok) {
-            alert(data.message || 'No se pudo eliminar el servicio.');
-            return;
-        }
+                if (!response.ok) {
+                    alert(data.message || 'No se pudo eliminar el servicio.');
+                    return;
+                }
 
-        await loadCatalogPage();
+                await loadCatalogPage();
+            },
+            'Eliminar servicio',
+            'Esta acción eliminará el servicio del sistema',
+            'Eliminación de servicio',
+            'Listo para eliminar',
+            'Confirmar eliminación'
+        );
     }
 
     function openBulkModal() {
+        if (!catalogAccess.mass_import) return;
+
         hideError('bulkUploadErrorBox');
         document.getElementById('bulkFile').value = '';
         document.getElementById('bulkUploadModal').classList.add('show');
@@ -912,6 +1105,8 @@
 
     async function submitBulkUpload() {
         hideError('bulkUploadErrorBox');
+
+        if (!catalogAccess.mass_import) return;
 
         const fileInput = document.getElementById('bulkFile');
         const file = fileInput.files[0];
@@ -977,6 +1172,27 @@
         document.getElementById('catalogCategory').addEventListener('change', loadCatalogItems);
         document.getElementById('catalogStatus').addEventListener('change', loadCatalogItems);
         document.getElementById('itemType').addEventListener('change', toggleItemFields);
+
+        const confirmModal = document.getElementById('confirmActionModal');
+        const confirmButton = document.getElementById('confirmActionButton');
+
+        if (confirmButton) {
+            confirmButton.addEventListener('click', async function () {
+                if (typeof confirmActionCallback === 'function') {
+                    const action = confirmActionCallback;
+                    closeConfirmModal();
+                    await action();
+                }
+            });
+        }
+
+        if (confirmModal) {
+            confirmModal.addEventListener('click', function (e) {
+                if (e.target === confirmModal) {
+                    closeConfirmModal();
+                }
+            });
+        }
     });
 </script>
 @endsection

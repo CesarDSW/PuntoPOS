@@ -3,15 +3,46 @@
 namespace App\Http\Controllers\Api\Reports;
 
 use App\Http\Controllers\Api\Ventas\SalesBaseController;
+use App\Support\UserAccess;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ReportController extends SalesBaseController
 {
+    private function authorizeReportsView(): void
+    {
+        $user = Auth::user();
+
+        if (!$user || !UserAccess::has($user, 'reports.view')) {
+            abort(403, 'No autorizado para ver reportes.');
+        }
+    }
+
+    private function authorizeReportsExport(): void
+    {
+        $user = Auth::user();
+
+        if (!$user || !UserAccess::has($user, 'reports.export')) {
+            abort(403, 'No autorizado para exportar reportes.');
+        }
+    }
+
+    private function authorizeReportsProfit(): void
+    {
+        $user = Auth::user();
+
+        if (!$user || !UserAccess::has($user, 'reports.profit.view')) {
+            abort(403, 'No autorizado para ver métricas financieras.');
+        }
+    }
+
     public function summary(Request $request)
     {
+        $this->authorizeReportsProfit();
+
         $companyId = $this->getCompanyId();
         $branchId = $this->resolveReportBranchId($request, $companyId);
         $period = $this->resolvePeriod($request->query('period', '6m'));
@@ -47,6 +78,8 @@ class ReportController extends SalesBaseController
 
     public function salesVsCosts(Request $request)
     {
+        $this->authorizeReportsProfit();
+
         $companyId = $this->getCompanyId();
         $branchId = $this->resolveReportBranchId($request, $companyId);
         $period = $this->resolvePeriod($request->query('period', '6m'));
@@ -108,6 +141,8 @@ class ReportController extends SalesBaseController
 
     public function categories(Request $request)
     {
+        $this->authorizeReportsProfit();
+
         $companyId = $this->getCompanyId();
         $branchId = $this->resolveReportBranchId($request, $companyId);
         $period = $this->resolvePeriod($request->query('period', '6m'));
@@ -168,6 +203,8 @@ class ReportController extends SalesBaseController
 
     public function peakHours(Request $request)
     {
+        $this->authorizeReportsView();
+
         $companyId = $this->getCompanyId();
         $branchId = $this->resolveReportBranchId($request, $companyId);
         $period = $this->resolvePeriod($request->query('period', '6m'));
@@ -222,6 +259,8 @@ class ReportController extends SalesBaseController
 
     public function topProducts(Request $request)
     {
+        $this->authorizeReportsView();
+
         $validated = $request->validate([
             'limit' => ['nullable', 'integer', 'min:1', 'max:10'],
         ]);
@@ -267,6 +306,8 @@ class ReportController extends SalesBaseController
 
     public function paymentMethods(Request $request)
     {
+        $this->authorizeReportsProfit();
+
         $companyId = $this->getCompanyId();
         $branchId = $this->resolveReportBranchId($request, $companyId);
         $period = $this->resolvePeriod($request->query('period', '6m'));
@@ -309,6 +350,8 @@ class ReportController extends SalesBaseController
 
     private function resolveReportBranchId(Request $request, int $companyId): int
     {
+        $this->authorizeReportsView();
+
         $branchId = $this->resolveBranchId(
             $request->filled('branch_id') ? (int) $request->branch_id : null,
             $companyId

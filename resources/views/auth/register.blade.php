@@ -18,7 +18,7 @@
             <div class="feature">
                 <div class="icon">⚡</div>
                 <div class="feature-text">
-                    <strong>Rapido y eficiente</strong>
+                    <strong>Rápido y eficiente</strong>
                     <span>Optimiza tus procesos diarios</span>
                 </div>
             </div>

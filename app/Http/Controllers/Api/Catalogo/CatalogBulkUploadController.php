@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Api\Catalogo;
 
+use App\Support\UserAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -26,6 +28,8 @@ class CatalogBulkUploadController extends CatalogBaseController
 
     public function template()
     {
+        $this->authorizeBulkImport();
+
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
 
@@ -83,6 +87,8 @@ class CatalogBulkUploadController extends CatalogBaseController
 
     public function upload(Request $request)
     {
+        $this->authorizeBulkImport();
+
         $companyId = $this->getCompanyId();
 
         $validated = $request->validate([
@@ -299,5 +305,14 @@ class CatalogBulkUploadController extends CatalogBaseController
             'total_processed' => $createdProducts + $assignedProducts + $createdServices,
             'valid_rows_found' => $validRowsFound,
         ]);
+    }
+
+    private function authorizeBulkImport(): void 
+    {
+        $user = Auth::user();
+
+        if (!$user || !UserAccess::has($user, 'catalog.mass_import')) {
+            abort(403, 'No autorizado para carga masiva.');
+        }
     }
 }

@@ -77,7 +77,7 @@ class AuthController extends Controller
             DB::rollBack();
 
             return back()->withErrors([
-                'error' => 'Ocurrio un error al registrar el usuario y la empresa: '. $e->getMessage()
+                'error' => 'Ocurrió un error al registrar el usuario y la empresa: '. $e->getMessage()
             ])->withInput();
         }   
     }

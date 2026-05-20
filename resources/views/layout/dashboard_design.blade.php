@@ -6,6 +6,117 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Punto')</title>
 
+    @php
+        $companyPrefsForJs = \App\Support\CompanyPreference::all(auth()->user()->company_idfk ?? null);
+    @endphp
+
+    <script>
+        window.appPreferences = @json($companyPrefsForJs);
+
+        window.appFormat = {
+            money(value) {
+                const prefs = window.appPreferences || {};
+                const currency = prefs.currency || 'MXN';
+                const decimals = Number(prefs.price_decimals ?? 2);
+
+                return new Intl.NumberFormat('es-MX', {
+                    style: 'currency',
+                    currency: currency,
+                    minimumFractionDigits: decimals,
+                    maximumFractionDigits: decimals
+                }).format(Number(value || 0));
+            },
+
+            normalizeDate(value) {
+                if (!value) return null;
+
+                if (value instanceof Date) {
+                    return value;
+                }
+
+                const stringValue = String(value).replace(' ', 'T');
+                const date = new Date(stringValue);
+
+                return isNaN(date.getTime()) ? null : date;
+            },
+
+            date(value) {
+                const date = this.normalizeDate(value);
+
+                if (!date) {
+                    return value || '-';
+                }
+
+                try {
+                    return new Intl.DateTimeFormat('es-MX', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        timeZone: window.appPreferences?.timezone || 'America/Mexico_City'
+                    }).format(date);
+                } catch (e) {
+                    return new Intl.DateTimeFormat('es-MX', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                    }).format(date);
+                }
+            },
+
+            time(value) {
+                const date = this.normalizeDate(value);
+
+                if (!date) {
+                    return value || '-';
+                }
+
+                try {
+                    return new Intl.DateTimeFormat('es-MX', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false,
+                        timeZone: window.appPreferences?.timezone || 'America/Mexico_City'
+                    }).format(date);
+                } catch (e) {
+                    return new Intl.DateTimeFormat('es-MX', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    }).format(date);
+                }
+            },
+
+            dateTime(value) {
+                const date = this.normalizeDate(value);
+
+                if (!date) {
+                    return value || '-';
+                }
+
+                try {
+                    return new Intl.DateTimeFormat('es-MX', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false,
+                        timeZone: window.appPreferences?.timezone || 'America/Mexico_City'
+                    }).format(date);
+                } catch (e) {
+                    return new Intl.DateTimeFormat('es-MX', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    }).format(date);
+                }
+            }
+        };
+    </script>
+
     <link rel="stylesheet" href="https://cdn.datatables.net/2.3.7/css/dataTables.dataTables.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/2.3.7/js/dataTables.dataTables.js"></script>
@@ -49,7 +160,7 @@
                 if (typeof media.addEventListener === 'function') {
                     media.addEventListener('change', applyTheme);
                 } else if (typeof media.addListener === 'function') {
-                        media.addListener(applyTheme);
+                    media.addListener(applyTheme);
                 }
             }
         })();

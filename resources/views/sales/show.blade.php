@@ -1,3 +1,11 @@
+@php 
+    $salesShowAccess = [
+        'view' => \App\Support\UserAccess::has(auth()->user(), 'sales.view'),
+        'create' => \App\Support\UserAccess::has(auth()->user(), 'sales.create'),
+        'ticket_print' => \App\Support\UserAccess::has(auth()->user(), 'sales.ticket.print'),
+    ];
+@endphp
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -206,10 +214,17 @@
     <div class="wrap">
         <div class="top-actions">
             <a href="/ventas" class="btn">Volver</a>
-            <a href="/ventas/{{ $saleId }}/ticket" target="_blank" class="btn btn-primary">Ver ticket original</a>
-            <a href="/ventas/{{ $saleId }}/ticket?print=1" target="_blank" class="btn">Imprimir ticket original</a>
+            
+            @if($salesShowAccess['ticket_print'])
+                <a href="/ventas/{{ $saleId }}/ticket" target="_blank" class="btn btn-primary">Ver ticket original</a>
+                <a href="/ventas/{{ $saleId }}/ticket?print=1" target="_blank" class="btn">Imprimir ticket original</a>
+            @endif
+            
             <button class="btn" onclick="openSmsModal()">Enviar por SMS</button>
-            <a href="/ventas/pos" class="btn">Nueva venta</a>
+            
+            @if($salesShowAccess['create'])
+                <a href="/ventas/pos" class="btn">Nueva venta</a>
+            @endif
         </div>
 
         <div id="saleContent" class="loading">Cargando detalle de venta...</div>

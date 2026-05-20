@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Ventas;
 
 use App\Http\Controllers\Controller;
+use App\Support\UserAccess;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -10,6 +11,60 @@ use Illuminate\Validation\ValidationException;
 class SalesBaseController extends Controller
 {
     protected const TAX_RATE = 0.16;
+
+    protected function authorizeSalesView(): void 
+    {
+        $user = $this->getAuthenticatedUser();
+
+        if (!UserAccess::has($user, 'sales.view')) {
+            abort(403, 'No autorizado para ver ventas.');
+        }
+    }
+
+    protected function authorizeSalesCreate(): void 
+    {
+        $user = $this->getAuthenticatedUser();
+
+        if (!UserAccess::has($user, 'sales.create')) {
+            abort(403, 'No autorizado para crear ventas.');
+        }
+    }
+
+    protected function authorizeSalesTicketPrint(): void 
+    {
+        $user = $this->getAuthenticatedUser();
+
+        if (!UserAccess::has($user, 'sales.ticket.print')) {
+            abort(403, 'No autorizado para imprimir tickets.');
+        }
+    }
+
+    protected function authorizeCashOpen(): void 
+    {
+        $user = $this->getAuthenticatedUser();
+
+        if (!UserAccess::has($user, 'cash.open')) {
+            abort(403, 'No autorizado para abir caja.');
+        }
+    }
+
+    protected function authorizeCashClose(): void 
+    {
+        $user = $this->getAuthenticatedUser();
+
+        if (!UserAccess::has($user, 'cash.close')) {
+            abort(403, 'No autorizado para cerrar caja.');
+        }
+    }
+
+    protected function authorizeCashHistoryView(): void 
+    {
+        $user = $this->getAuthenticatedUser();
+
+        if (!UserAccess::has($user, 'cash.history.view')) {
+            abort(403, 'No autorizado para ver historial de cajas.');
+        }
+    }
 
     protected function getAuthenticatedUser()
     {
@@ -94,11 +149,12 @@ class SalesBaseController extends Controller
         $customer = DB::table('customer')
             ->where('customer_id', $customerId)
             ->where('company_idfk', $companyId)
+            ->where('status_customer', 1)
             ->first();
 
         if (!$customer) {
             throw ValidationException::withMessages([
-                'customer_id' => ['El cliente no pertenece a la empresa del usuario.'],
+                'customer_id' => ['El cliente no existe, no pertenece a la empresa o fue eliminado.'],
             ]);
         }
 
@@ -109,6 +165,7 @@ class SalesBaseController extends Controller
     {
         $customer = DB::table('customer')
             ->where('company_idfk', $companyId)
+            ->where('status_customer', 1)
             ->whereRaw('LOWER(name_customer) = ?', ['cliente general'])
             ->orderBy('customer_id')
             ->first();
@@ -122,6 +179,7 @@ class SalesBaseController extends Controller
             'phone' => '0000000000',
             'email' => 'cliente.general.' . $companyId . '@punto.local',
             'company_idfk' => $companyId,
+            'status_customer' => 1,
         ]);
 
         return (object) [
@@ -130,6 +188,7 @@ class SalesBaseController extends Controller
             'phone' => '0000000000',
             'email' => 'cliente.general.' . $companyId . '@punto.local',
             'company_idfk' => $companyId,
+            'status_customer' => 1,
         ];
     }
 

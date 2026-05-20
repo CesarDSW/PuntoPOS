@@ -8,6 +8,14 @@
 
 @section('content')
 
+@php
+    $inventoryAccess = [
+        'view' => \App\Support\UserAccess::has(auth()->user(), 'inventory.view'),
+        'adjust' => \App\Support\UserAccess::has(auth()->user(), 'inventory.adjust'),
+        'history_view' => \App\Support\UserAccess::has(auth()->user(), 'inventory.history.view'),
+    ];
+@endphp
+
 <div class="inventory-wrap">
     <div class="inventory-header">
         <div>
@@ -16,8 +24,13 @@
         </div>
 
         <div class="inventory-actions">
-            <button class="btn btn-primary" type="button" onclick="openBulkModal()">Ajuste general</button>
-            <button class="btn" type="button" onclick="openHistoryModal()">Ver historial</button>
+            @if($inventoryAccess['adjust'])
+                <button class="btn btn-primary" type="button" onclick="openBulkModal()">Ajuste general</button>
+            @endif
+            
+            @if($inventoryAccess['history_view'])
+                <button class="btn" type="button" onclick="openHistoryModal()">Ver historial</button>
+            @endif
         </div>
     </div>
 
@@ -215,6 +228,8 @@
 </div>
 
 <script>
+    const inventoryAccess = @json($inventoryAccess);
+
     let inventoryItems = [];
     let selectedProduct = null;
     let bulkProducts = [];
@@ -342,6 +357,11 @@
                 badgeText = 'Sin stock';
             }
 
+            const actions = inventoryAccess.adjust
+                ? `<button class="btn btn-primary" type="button" onclick="openSingleAdjustModal(${item.product_id})">Ajustar</button>`
+                : `<span class="text-muted">Sin acciones</span>`;
+
+
             return `
                 <tr>
                     <td>
@@ -353,11 +373,7 @@
                     <td>${item.minimum_stock} unidades</td>
                     <td>${formatMoney(item.price)}</td>
                     <td><span class="badge ${badgeClass}">${badgeText}</span></td>
-                    <td>
-                        <button class="btn btn-primary" type="button" onclick="openSingleAdjustModal(${item.product_id})">
-                            Ajustar
-                        </button>
-                    </td>
+                    <td>${actions}</td>
                 </tr>
             `;
         }).join('');
@@ -399,6 +415,8 @@
     }
 
     async function openSingleAdjustModal(productId) {
+        if (!inventoryAccess.adjust) return;
+
         hideError('singleErrorBox');
 
         const { response, data } = await apiFetch(`/api/inventory/products/${productId}`);
@@ -428,6 +446,8 @@
     }
 
     async function submitSingleAdjust() {
+        if (!inventoryAccess.adjust) return;
+
         hideError('singleErrorBox');
 
         if (!selectedProduct) {
@@ -489,6 +509,8 @@
     }
 
     async function openHistoryModal() {
+        if (!inventoryAccess.history_view) return;
+
         document.getElementById('historyModal').classList.add('show');
         await loadHistory();
     }
@@ -498,6 +520,8 @@
     }
 
     async function loadHistory() {
+        if (!inventoryAccess.history_view) return;
+
         const search = document.getElementById('historySearch').value.trim();
         const type = document.getElementById('historyType').value;
         const from = document.getElementById('historyFrom').value;
@@ -547,7 +571,7 @@
                     </div>
                     <div>
                         <div class="text-muted">Fecha</div>
-                        <div style="font-weight:bold;">${window.addFormat.dateTime(item.date_time)}</div>
+                        <div style="font-weight:bold;">${window.appFormat.dateTime(item.date_time)}</div>
                     </div>
                     <div>
                         <div class="text-muted">Usuario</div>
@@ -559,6 +583,8 @@
     }
 
     async function openBulkModal() {
+        if (!inventoryAccess.adjust) return;
+
         hideError('bulkErrorBox');
         document.getElementById('bulkType').value = 'ENTRADA';
         document.getElementById('bulkReasonOther').value = '';
@@ -636,6 +662,8 @@
     }
 
     async function submitBulkAdjust() {
+        if (!inventoryAccess.adjust) return;
+
         hideError('bulkErrorBox');
 
         const type = document.getElementById('bulkType').value;
@@ -643,17 +671,17 @@
         const otherReason = document.getElementById('bulkReasonOther').value.trim();
         const reason = selectedReason === 'Otro' ? otherReason : selectedReason;
 
-        if (!reason) {
-            showError('bulkErrorBox', 'Selecciona o escribe un motivo.');
-            return;
-        }
-
-        const items = bulkProducts
+        const items = bulkProducts 
             .filter(item => Number(item.entered_quantity) > 0)
             .map(item => ({
                 product_id: item.product_id,
                 quantity: Number(item.entered_quantity)
             }));
+
+        if (!reason) {
+            showError('bulkErrorBox', 'Selecciona o escribe un motivo.');
+            return;
+        }
 
         if (items.length === 0) {
             showError('bulkErrorBox', 'Debes capturar al menos un producto.');

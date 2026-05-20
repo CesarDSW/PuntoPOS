@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Api\Catalogo;
 
+use App\Support\UserAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class CategoryController extends CatalogBaseController
@@ -29,49 +31,59 @@ class CategoryController extends CatalogBaseController
 
     public function index()
     {
-        $companyId = $this->getCompanyId();
+        $this->authorizeCategoryPermission('view');
 
-        $categories = DB::table('category')
-            ->where(function ($q) use ($companyId) {
-                $q->where('company_idfk', $companyId)
-                  ->orWhereNull('company_idfk');
+        $authUser = Auth::user();
+        $companyId = (int) $authUser->company_idfk;
+
+        $categories = DB::table('category as c')
+            ->where('c.company_idfk', $companyId)
+            ->select([
+                'c.category_id',
+                'c.name_category',
+                'c.description_category',
+                'c.status_category',
+            ])
+            ->selectRaw("
+                (
+                    SELECT COUNT(*)
+                    FROM productt p
+                    WHERE p.company_idfk = c.company_idfk
+                    AND p.category_idfk = c.category_id
+                ) as products_count
+            ")
+            ->selectRaw("
+                (
+                    SELECT COUNT(*)
+                    FROM servicee s
+                    WHERE s.company_idfk = c.company_idfk
+                    AND s.category_idfk = c.category_id
+                ) as services_count
+            ")
+            ->orderBy('c.name_category')
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'category_id' => (int) $row->category_id,
+                    'name_category' => $row->name_category,
+                    'description_category' => $row->description_category,
+                    'status_category' => (int) $row->status_category,
+                    'products_count' => (int) $row->products_count,
+                    'services_count' => (int) $row->services_count,
+                    'items_count' => (int) $row->products_count + (int) $row->services_count,
+                    'can_edit' => true,
+                    'can_delete' => true,
+                ];
             })
-            ->orderBy('name_category')
-            ->get();
+            ->values();
 
-        $productCounts = DB::table('productt')
-            ->where('company_idfk', $companyId)
-            ->select('category_idfk', DB::raw('COUNT(*) as total'))
-            ->groupBy('category_idfk')
-            ->pluck('total', 'category_idfk');
-
-        $serviceCounts = DB::table('servicee')
-            ->where('company_idfk', $companyId)
-            ->select('category_idfk', DB::raw('COUNT(*) as total'))
-            ->groupBy('category_idfk')
-            ->pluck('total', 'category_idfk');
-
-        $result = $categories->map(function ($category) use ($productCounts, $serviceCounts) {
-            $productTotal = (int) ($productCounts[$category->category_id] ?? 0);
-            $serviceTotal = (int) ($serviceCounts[$category->category_id] ?? 0);
-
-            return [
-                'category_id' => $category->category_id,
-                'name_category' => $category->name_category,
-                'description_category' => $category->description_category,
-                'type_category' => $category->type_category,
-                'status_category' => (int) ($category->status_category ?? 1),
-                'items_count' => $productTotal + $serviceTotal,
-                'can_edit' => true,
-                'can_delete' => ($productTotal + $serviceTotal) === 0,
-            ];
-        });
-
-        return response()->json($result);
+        return response()->json($categories);
     }
 
     public function show(int $id)
     {
+        $this->authorizeCategoryPermission('view');
+
         $companyId = $this->getCompanyId();
 
         $category = $this->getEditableCategoryOrFail($id, $companyId);
@@ -81,6 +93,8 @@ class CategoryController extends CatalogBaseController
 
     public function store(Request $request)
     {
+        $this->authorizeCategoryPermission('create');
+
         $companyId = $this->getCompanyId();
 
         $validated = $request->validate([
@@ -118,6 +132,8 @@ class CategoryController extends CatalogBaseController
 
     public function update(Request $request, int $id)
     {
+        $this->authorizeCategoryPermission('edit');
+
         $companyId = $this->getCompanyId();
         $category = $this->getEditableCategoryOrFail($id, $companyId);
 
@@ -157,6 +173,8 @@ class CategoryController extends CatalogBaseController
 
     public function deactivate(int $id)
     {
+        $this->authorizeCategoryPermission('edit');
+
         $companyId = $this->getCompanyId();
         $this->getEditableCategoryOrFail($id, $companyId);
 
@@ -173,8 +191,21 @@ class CategoryController extends CatalogBaseController
 
     public function destroy(int $id)
     {
-        $companyId = $this->getCompanyId();
-        $this->getEditableCategoryOrFail($id, $companyId);
+        $this->authorizeCategoryPermission('delete');
+
+        $authUser = Auth::user();
+        $companyId = (int) $authUser->company_idfk;
+
+        $category = DB::table('category')
+            ->where('category_id', $id)
+            ->where('company_idfk', $companyId)
+            ->first();
+        
+        if (!$category) {
+            return response()->json([
+                'message' => 'La categoría no existe o no pertenece a tu empresa.'
+            ], 404);
+        }
 
         $productsCount = DB::table('productt')
             ->where('company_idfk', $companyId)
@@ -186,18 +217,43 @@ class CategoryController extends CatalogBaseController
             ->where('category_idfk', $id)
             ->count();
 
-        if (($productsCount + $servicesCount) > 0) {
-            throw ValidationException::withMessages([
-                'category_id' => ['No puedes eliminar una categoría que todavía tiene elementos asociados.'],
-            ]);
+        if (($productsCount > 0 || $servicesCount) > 0) {
+            return response()->json([
+                'message' => 'No se puede eliminar la categoría porque tiene productos o servicios asociados.',
+                'errors' => [
+                    'category_id' => [
+                        "La categoría tiene {$productsCount} producto(s) y {$servicesCount} servicio(s) asociados."
+                    ]
+                ],
+                'products_count'  => $productsCount,
+                'services_count' => $servicesCount,
+            ], 422);
         }
 
         DB::table('category')
             ->where('category_id', $id)
+            ->where('company_idfk', $companyId)
             ->delete();
 
         return response()->json([
             'message' => 'Categoría eliminada correctamente.',
         ]);
+    }
+
+    private function authorizeCategoryPermission(string $ability): void 
+    {
+        $user = Auth::user();
+
+        $allowed = match ($ability) {
+            'view' => UserAccess::has($user, 'catalog.view'),
+            'create' => UserAccess::has($user, 'catalog.categories.create'),
+            'edit' => UserAccess::has($user, 'catalog.categories.edit'),
+            'delete' => UserAccess::has($user, 'catalog.categories.delete'),
+            default => false,
+        };
+
+        if (!$user || !$allowed) {
+            abort(403, 'No autorizado.');
+        }
     }
 }

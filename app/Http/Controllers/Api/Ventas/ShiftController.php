@@ -11,6 +11,8 @@ class ShiftController extends SalesBaseController
 {
     public function summary(Request $request)
     {
+        $this->authorizeSalesPosUse();
+
         $validated = $request->validate([
             'branch_id' => ['nullable', 'integer', 'exists:branch,branch_id'],
         ]);
@@ -80,6 +82,8 @@ class ShiftController extends SalesBaseController
 
     public function open(Request $request)
     {
+        $this->authorizeSalesPosUse();
+
         $validated = $request->validate([
             'branch_id' => ['nullable', 'integer', 'exists:branch,branch_id'],
             'shift_type' => ['nullable', 'string', 'max:30'],
@@ -138,6 +142,8 @@ class ShiftController extends SalesBaseController
 
     public function close(Request $request)
     {
+        $this->authorizeSalesPosUse();
+
         $validated = $request->validate([
             'branch_id' => ['nullable', 'integer', 'exists:branch,branch_id'],
             'notes_shift' => ['nullable', 'string', 'max:255'],

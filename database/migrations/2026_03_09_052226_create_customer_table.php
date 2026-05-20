@@ -13,7 +13,8 @@ return new class extends Migration
             $table->string('name_customer', 150);
             $table->string('phone', 10);
             $table->string('email', 320);
-            $table->integer('company_idfk')->index('fk_customer_company');
+            $table->integer('company_idfk')->index('idx_customer_company_idfk');
+            $table->boolean('status_customer')->default(true);
         });
     }
 

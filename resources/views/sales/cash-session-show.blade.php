@@ -1,93 +1,11 @@
 @extends('layouts.app')
-
 @section('title', 'Detalle de caja')
 
-@section('content')
-<style>
-    .cash-detail-wrap { display:flex; flex-direction:column; gap:18px; }
-    .cash-detail-header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
-    .summary-grid {
-        display:grid;
-        grid-template-columns:repeat(4, minmax(0, 1fr));
-        gap:16px;
-    }
-    .summary-card, .card, .note-card {
-        background:#fff;
-        border:1px solid #e5e7eb;
-        border-radius:16px;
-    }
-    .summary-card { padding:20px; }
-    .summary-label { color:#64748b; font-size:14px; margin-bottom:10px; }
-    .summary-value { font-size:22px; font-weight:700; }
-    .card-head {
-        padding:20px;
-        border-bottom:1px solid #e5e7eb;
-    }
-    .card-title { font-size:18px; font-weight:700; }
-    .card-subtitle { color:#64748b; font-size:14px; margin-top:4px; }
-    .info-grid {
-        display:grid;
-        grid-template-columns:repeat(2, minmax(0, 1fr));
-        gap:16px;
-        padding:20px;
-    }
-    .info-box {
-        border:1px solid #e5e7eb;
-        border-radius:14px;
-        padding:16px;
-        background:#f8fafc;
-    }
-    .info-label { color:#64748b; font-size:13px; margin-bottom:8px; }
-    .info-value { font-size:16px; font-weight:700; }
-    .method-grid {
-        display:grid;
-        grid-template-columns:repeat(3, minmax(0, 1fr));
-        gap:16px;
-        padding:20px;
-    }
-    .method-box {
-        border:1px solid #e5e7eb;
-        border-radius:14px;
-        padding:16px;
-        background:#fff;
-    }
-    table { width:100%; border-collapse:collapse; }
-    th, td {
-        padding:14px 16px;
-        border-bottom:1px solid #e5e7eb;
-        text-align:left;
-        font-size:14px;
-        vertical-align:middle;
-    }
-    th { background:#f8fafc; font-size:12px; color:#64748b; text-transform:uppercase; }
-    .empty-box { padding:22px; text-align:center; color:#64748b; }
-    .note-card {
-        padding:18px;
-        color:#334155;
-        line-height:1.7;
-        background:#f8fafc;
-    }
-    .badge {
-        display:inline-block;
-        padding:5px 10px;
-        border-radius:999px;
-        font-size:12px;
-    }
-    .badge-green { background:#dcfce7; color:#166534; }
-    .badge-blue { background:#dbeafe; color:#1d4ed8; }
-    @media (max-width: 1100px) {
-        .summary-grid,
-        .info-grid,
-        .method-grid {
-            grid-template-columns:1fr;
-        }
-        .cash-detail-header {
-            flex-direction:column;
-            align-items:stretch;
-        }
-    }
-</style>
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('css/pages/sales/cash-session-show.css') }}">
+@endpush
 
+@section('content')
 <div class="cash-detail-wrap">
     <div class="cash-detail-header">
         <div>

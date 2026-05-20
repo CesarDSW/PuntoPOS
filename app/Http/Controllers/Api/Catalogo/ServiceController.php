@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Api\Catalogo;
 
+use App\Support\UserAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -12,6 +14,8 @@ class ServiceController extends CatalogBaseController
 {
     public function show(int $id)
     {
+        $this->authorizeServicePermission('view');
+
         $companyId = $this->getCompanyId();
 
         $service = DB::table('servicee')
@@ -30,6 +34,8 @@ class ServiceController extends CatalogBaseController
 
     public function store(Request $request)
     {
+        $this->authorizeServicePermission('create');
+
         $companyId = $this->getCompanyId();
 
         $validated = $request->validate([
@@ -72,6 +78,8 @@ class ServiceController extends CatalogBaseController
 
     public function update(Request $request, int $id)
     {
+        $this->authorizeServicePermission('edit');
+
         $companyId = $this->getCompanyId();
 
         $service = DB::table('servicee')
@@ -128,6 +136,8 @@ class ServiceController extends CatalogBaseController
 
     public function deactivate(int $id)
     {
+        $this->authorizeServicePermission('edit');
+
         $companyId = $this->getCompanyId();
 
         $exists = DB::table('servicee')
@@ -155,6 +165,8 @@ class ServiceController extends CatalogBaseController
 
     public function destroy(int $id)
     {
+        $this->authorizeServicePermission('delete');
+
         $companyId = $this->getCompanyId();
 
         $exists = DB::table('servicee')
@@ -181,6 +193,23 @@ class ServiceController extends CatalogBaseController
             return response()->json([
                 'message' => 'No se puede eliminar el servicio porque tiene registros relacionados.',
             ], 422);
+        }
+    }
+
+    private function authorizeServicePermission(string $ability): void 
+    {
+        $user = Auth::user();
+
+        $allowed = match ($ability) {
+            'view' => UserAccess::has($user, 'catalog.view'),
+            'create' => UserAccess::has($user, 'catalog.services.create'),
+            'edit' => UserAccess::has($user, 'catalog.services.edit'),
+            'delete' => UserAccess::has($user, 'catalog.services.delete'),
+            default => false,
+        };
+
+        if (!$user || !$allowed) {
+            abort(403, 'No autorizado.');
         }
     }
 }

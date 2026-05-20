@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Permission;
 use App\Models\User;
+use App\Support\UserAccess;
 use App\Models\Rol;
 use App\Models\Company;
 use App\Models\CompanySettings;
 use App\Models\SystemNotification;
+use App\Support\TimezoneCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -21,22 +25,64 @@ class SettingsController extends Controller
     public function showSettings()
     {
         $authUser = Auth::user();
+        $currentUser = $authUser;
 
-        $currentRoleName = $this->getUserRoleName($authUser);
-        $currentUserId = $authUser->userr_id;
-        $canEditBusinessProfile = $currentRoleName !== 'GERENTE';
+        $access = UserAccess::summary($currentUser);
+        $grantablePermissions = UserAccess::grantablePermissions($currentUser);
+
+        $currentRoleName = UserAccess::roleName($currentUser);
+        $currentUserId = $currentUser->userr_id;
+        $canEditBusinessProfile = $access['can_edit_business_profile'];
         $ownerUserId = $this->getCompanyOwnerUserId((int) $authUser->company_idfk);
 
-        $branches = DB::table('branch')
+        $branchCards = DB::table('branch')
             ->where('company_idfk', $authUser->company_idfk)
             ->orderBy('name_branch')
-            ->get(['branch_id', 'name_branch']);
+            ->get([
+                'branch_id',
+                'name_branch',
+                'address',
+                'city',
+                'state',
+                'phone',
+                'responsible',
+                'email',
+            ]);
+
+        $branches = $branchCards->map(function ($branch) {
+            return (object) [
+                'branch_id' => $branch->branch_id,
+                'name_branch' => $branch->name_branch,
+            ];
+        });
 
         $company = Company::findOrFail($authUser->company_idfk);
-
         $roles = DB::table('rol')->orderBy('type_rol')->get();
+        $baseUsers = User::where('company_idfk', $authUser->company_idfk)->get();
 
-        $users = User::where('company_idfk', $authUser->company_idfk)->get();
+        $userBranchMap = DB::table('user_branch')
+            ->whereIn('userr_idfk', $baseUsers->pluck('userr_id'))
+            ->pluck('branch_idfk', 'userr_idfk');
+
+        $users = collect($baseUsers)->map(function ($userItem) use ($currentUser, $userBranchMap) {
+            $targetUser = User::find($userItem->userr_id);
+
+            $userItem->can_edit_ui = $targetUser
+                ? UserAccess::canEditTarget($currentUser, $targetUser)
+                : false;
+
+            $userItem->can_delete_ui = $targetUser
+                ? UserAccess::canDeleteTarget($currentUser, $targetUser)
+                : false;
+
+            $userItem->permission_states = $targetUser
+                ? UserAccess::userOverrideStates((int) $targetUser->userr_id)
+                : [];
+
+            $userItem->branch_idfk = $userBranchMap[$userItem->userr_id] ?? null;
+
+            return $userItem;
+        });
 
         $settings = CompanySettings::firstOrCreate(
             ['company_idfk' => $authUser->company_idfk],
@@ -55,48 +101,31 @@ class SettingsController extends Controller
             ]
         );
 
-        $userBranchMap = DB::table('user_branch')
-            ->whereIn('userr_idfk', $users->pluck('userr_id'))
-            ->pluck('branch_idfk', 'userr_idfk');
-        
-        foreach($users as $user){
-            $user->branch_idfk = $userBranchMap[$user->userr_id] ?? null;
-        }
-
         $assignedBranchId = DB::table('user_branch')
             ->where('userr_idfk', $authUser->userr_id)
             ->value('branch_idfk');
 
         $assignedBranch = null;
 
-        if($assignedBranchId){
-            $assignedBranch = DB::table('branch')
-                ->where('branch_id', $assignedBranchId)
-                ->where('company_idfk', $authUser->company_idfk)
-                ->first([
-                    'branch_id',
-                    'name_branch',
-                    'address',
-                    'city',
-                    'state',
-                    'phone',
-                    'responsible',
-                    'email',
-                ]);
+        if ($assignedBranchId) {
+            $assignedBranch = $branchCards->firstWhere('branch_id', $assignedBranchId);
         }
 
-        return view('settings', compact( 
-            'company', 
-            'roles', 
-            'users', 
-            'settings',
-            'branches',
-            'currentRoleName',
-            'currentUserId',
-            'canEditBusinessProfile',
-            'assignedBranch',
-            'ownerUserId'
-        ));
+        return view('settings', [
+            'company' => $company,
+            'roles' => $roles,
+            'users' => $users,
+            'settings' => $settings,
+            'branches' => $branches,
+            'branchCards' => $branchCards,
+            'currentRoleName' => $currentRoleName,
+            'currentUserId' => $currentUserId,
+            'canEditBusinessProfile' => $canEditBusinessProfile,
+            'assignedBranch' => $assignedBranch,
+            'ownerUserId' => $ownerUserId,
+            'access' => $access,
+            'grantablePermissions' => $grantablePermissions,
+        ]);
     }
 
     //Funcion para actualizar o agregar datos en configuracion
@@ -104,7 +133,7 @@ class SettingsController extends Controller
     {
         $authUser = Auth::user();
         
-        if($this->isGerente()){
+        if(!UserAccess::has($authUser, 'settings.profile.edit')) {
             abort(403, 'No autorizado.');
         }
 
@@ -149,7 +178,14 @@ class SettingsController extends Controller
         }
         
         if($request->hasFile('logo')){
-            $data['logo'] = $request->file('logo')->store('logos', 'public');
+            $oldLogo = $company->logo;
+
+            $newLogoPath = $request->file('logo')->store('logos', 'public');
+            $data['logo'] = $newLogoPath;
+
+            if (!empty($oldLogo) && $oldLogo !== $newLogoPath && Storage::disk('public')->exists($oldLogo)) {
+                Storage::disk('public')->delete($oldLogo);
+            }
         }
 
         if(!empty($data)){
@@ -163,6 +199,7 @@ class SettingsController extends Controller
     public function createUser(Request $request)
     {
         $authUser = Auth::user();
+        $currentUser = $authUser;
 
         $validated = $request->validate([
             'name_user' => 'required|string|max:100',
@@ -173,32 +210,29 @@ class SettingsController extends Controller
             'branch_idfk' => 'nullable|integer|exists:branch,branch_id',
         ]);
 
-        $role = Rol::findOrFail($validated['rol_idfk']);
-        $roleName = strtoupper(trim((string) $role->type_rol));
+        $targetRole = DB::table('rol')
+            ->where('rol_id', $validated['rol_idfk'])
+            ->value('type_rol');
 
-        if($this->isGerente() && $roleName !== 'CAJERO'){
-            throw ValidationException::withMessages([
-                'rol_idfk' => ['El gerente solo puede crear usuarios con rol de cajero.'],
-            ]);
+        $roleName = UserAccess::normalizeRoleName($targetRole);
+
+        if (!UserAccess::canCreateRole($currentUser, $roleName)) {
+            return back()
+                ->withErrors(['rol_idfk' => 'No tienes permiso para crear usuarios con ese rol.'])
+                ->withInput();
         }
 
-        if($roleName === 'CAJERO' && empty($validated['branch_idfk'])){
-            throw ValidationException::withMessages([
-                'branch_idfk' => ['Debes asignar una sucursal al cajero.'],
-            ]);
-        }
-
-        if($roleName !== 'CAJERO'){
+        if (!UserAccess::canAssignBranch($currentUser)) {
             $validated['branch_idfk'] = null;
         }
 
-        if(!empty($validated['branch_idfk'])){
+        if (!empty($validated['branch_idfk'])) {
             $branchBelongsToCompany = DB::table('branch')
                 ->where('branch_id', $validated['branch_idfk'])
                 ->where('company_idfk', $authUser->company_idfk)
                 ->exists();
-            
-            if(!$branchBelongsToCompany){
+
+            if (!$branchBelongsToCompany) {
                 throw ValidationException::withMessages([
                     'branch_idfk' => ['La sucursal seleccionada no pertenece a tu empresa.'],
                 ]);
@@ -216,10 +250,18 @@ class SettingsController extends Controller
             'state' => 1,
         ]);
 
-        if($roleName === 'CAJERO' && !empty($validated['branch_idfk'])){
+        if (!empty($validated['branch_idfk'])) {
             DB::table('user_branch')->updateOrInsert(
                 ['userr_idfk' => $user->userr_id],
-                ['branch_idfk' => $validated['branch_idfk']] 
+                ['branch_idfk' => $validated['branch_idfk']]
+            );
+        }
+
+        if ($roleName === 'GERENTE' && !empty($validated['branch_idfk'])) {
+            $this->syncBranchResponsibleFromManager(
+                (int) $user->userr_id,
+                (int) $validated['branch_idfk'],
+                (int) $authUser->company_idfk
             );
         }
 
@@ -230,19 +272,14 @@ class SettingsController extends Controller
     public function editUser($id)
     {
         $authUser = Auth::user();
-        
+
         $user = User::where('company_idfk', $authUser->company_idfk)
             ->where('userr_id', $id)
             ->firstOrFail();
-        
-        if($this->cannotManageOwner($authUser, $user)){
-            return redirect()->route('settings', ['tab' => 'usuarios'])
-                ->withErrors(['error' => 'No tienes permisos para editar al administrador dueño.']);
-        }
 
-        if($this->gerenteCannotManageTarget($authUser, $user)){
+        if (!UserAccess::canEditTarget($authUser, $user)) {
             return redirect()->route('settings', ['tab' => 'usuarios'])
-                ->withErrors(['error' => 'No tienes permisos para editar un administrador.']);
+                ->withErrors(['error' => 'No tienes permiso para editar este usuario.']);
         }
 
         $roles = DB::table('rol')->orderBy('type_rol')->get();
@@ -250,7 +287,7 @@ class SettingsController extends Controller
         $branchId = DB::table('user_branch')
             ->where('userr_idfk', $user->userr_id)
             ->value('branch_idfk');
-        
+
         $user->branch_idfk = $branchId;
 
         return redirect()->route('settings', [
@@ -270,16 +307,15 @@ class SettingsController extends Controller
             ->where('userr_id', $id)
             ->firstOrFail();
         
-        if($this->cannotManageOwner($authUser, $user)){
-            return redirect()->route('settings', ['tab' => 'usuarios'])
-                ->withErrors(['error' => 'No tienes permisos para editar al administrador dueño.']);
+        $currentUser = $authUser;
+        $targetUser = $user;
+
+        if(!UserAccess::canEditTarget($currentUser, $targetUser)){
+            return back()->withErrors([
+                'general' => 'No tienes permiso para editar este usuario.'
+            ]);
         }
         
-        if ($this->gerenteCannotManageTarget($authUser, $user)){
-            return redirect()->route('settings', ['tab' => 'usuarios'])
-                ->withErrors(['error' => 'No tienes permisos para editar un administrador.']);
-        }
-
         $validated = $request->validate([
             'name_user' => 'required|string|max:100',
             'phone' => 'required|string|max:10',
@@ -293,50 +329,51 @@ class SettingsController extends Controller
             'branch_idfk' => 'nullable|integer|exists:branch,branch_id',
         ]);
 
-        $authRoleName = $this->getUserRoleName($authUser);
-        $isSelf = (int) $authUser->userr_id === (int) $user->userr_id;
-
-        $ownerUserId = $this->getCompanyOwnerUserId((int) $authUser->company_idfk);
-        $isTargetOwner = $ownerUserId !== null && (int) $ownerUserId === (int) $user->userr_id;
-
         $currentBranchId = DB::table('user_branch')
-            ->where('userr_idfk', $user->userr_id)
+            ->where('userr_idfk', $targetUser->userr_id)
             ->value('branch_idfk');
+        
 
-        if($isTargetOwner) {
-            $validated['rol_idfk'] = $user->rol_idfk;
+        $isSelf = (int) $currentUser->userr_id === (int) $targetUser->userr_id;
+        $isTargetOwner = UserAccess::isOwner($targetUser);
+        $currentActorRole = UserAccess::roleName($currentUser);
+
+        if ($isTargetOwner || ($isSelf && in_array($currentActorRole, ['ADMINISTRADOR', 'GERENTE'], true))) {
+            $validated['rol_idfk'] = $targetUser->rol_idfk;
         }
 
-        if($isSelf && in_array($authRoleName, ['ADMIN', 'ADMINISTRADOR'], true)){
-            $validated['rol_idfk'] = $user->rol_idfk;
+        if ($isSelf && $currentActorRole === 'GERENTE') {
+            $validated['branch_idfk'] = $currentBranchId;
         }
 
-        if($authRoleName === 'GERENTE' && $isSelf){
-            $validated['rol_idfk'] = $user->rol_idfk;
+        if (!UserAccess::canAssignBranch($currentUser)) {
             $validated['branch_idfk'] = $currentBranchId;
         }
 
         $role = Rol::findOrFail($validated['rol_idfk']);
-        $roleName = strtoupper(trim((string) $role->type_rol));
+        $roleName = UserAccess::normalizeRoleName($role->type_rol);
 
-        if($roleName === 'CAJERO' && empty($validated['branch_idfk'])){
-            throw ValidationException::withMessages([
-                'branch_idfk' => ['Debes asignar una sucursal al cajero.'],
-            ]);
+        if (!in_array($roleName, ['CAJERO', 'GERENTE'], true)) {
+            $validated['branch_idfk'] = null;
         }
 
-        if(!empty($validated['branch_idfk'])){
+        if (!empty($validated['branch_idfk'])) {
             $branchBelongsToCompany = DB::table('branch')
                 ->where('branch_id', $validated['branch_idfk'])
                 ->where('company_idfk', $authUser->company_idfk)
                 ->exists();
-            
-            if(!$branchBelongsToCompany){
+
+            if (!$branchBelongsToCompany) {
                 throw ValidationException::withMessages([
                     'branch_idfk' => ['La sucursal seleccionada no pertenece a tu empresa.'],
                 ]);
             }
         }
+
+        $oldName = $user->name_user;
+        $oldEmail = $user->email;
+        $oldBranchId = $currentBranchId;
+        $oldRoleName = UserAccess::roleName($user);
 
         $user->update([
             'name_user' => $validated['name_user'],
@@ -345,7 +382,7 @@ class SettingsController extends Controller
             'rol_idfk' => $validated['rol_idfk'],
         ]);
 
-        if(in_array($roleName, ['CAJERO', 'GERENTE'], true) && !empty($validated['branch_idfk'])) {
+        if (in_array($roleName, ['CAJERO', 'GERENTE'], true) && !empty($validated['branch_idfk'])) {
             DB::table('user_branch')->updateOrInsert(
                 ['userr_idfk' => $user->userr_id],
                 ['branch_idfk' => $validated['branch_idfk']]
@@ -356,41 +393,143 @@ class SettingsController extends Controller
                 ->delete();
         }
 
+        if ($oldRoleName === 'GERENTE' && $oldBranchId && (
+            $roleName !== 'GERENTE' || (int) ($validated['branch_idfk'] ?? 0) !== (int) $oldBranchId
+        )) {
+            $this->clearBranchResponsibleIfMatches(
+                (int) $oldBranchId,
+                $oldName,
+                $oldEmail,
+                (int) $authUser->company_idfk
+            );
+        }
+
+        if ($roleName === 'GERENTE' && !empty($validated['branch_idfk'])) {
+            $this->syncBranchResponsibleFromManager(
+                (int) $user->userr_id,
+                (int) $validated['branch_idfk'],
+                (int) $authUser->company_idfk
+            );
+        }
+
+        if (UserAccess::canManagePermissions($currentUser)) {
+            UserAccess::syncUserOverrides(
+                $currentUser,
+                $targetUser,
+                $request->input('permission_states', [])
+            );
+        }
+
         return redirect()->route('settings', ['tab' => 'usuarios'])
             ->with('success', 'Usuario actualizado correctamente.');
     }
 
-    public function deleteUser($id)
+    public function storeBranch(Request $request)
     {
         $authUser = Auth::user();
 
-        $user = User::where('company_idfk', $authUser->company_idfk)
-            ->where('userr_id', $id)
-            ->firstOrFail();
-        
-        if($this->cannotManageOwner($authUser, $user)){
-            return redirect()->route('settings', ['tab' => 'usuarios'])
-                ->withErrors(['error' => 'No tienes permisos para eliminar al administrador dueño.']);
+        if (!UserAccess::has($authUser, 'branch.create')) {
+            return response()->json([
+                'message' => 'No tienes permiso para crear sucursales.'
+            ], 403);
         }
 
-        if($user->userr_id == $authUser->userr_id){
-            return redirect()->route('settings', ['tab' => 'usuarios'])
-                ->withErrors(['error' => 'No puedes eliminar tu propio usuario.']);
+        $validated = $request->validate([
+            'name_branch' => 'required|string|max:50',
+            'address' => 'required|string|max:150',
+            'city' => 'required|string|max:100',
+            'state' => 'required|string|max:100',
+            'phone' => 'nullable|string|max:10',
+            'responsible_user_id' => 'nullable|integer|exists:userr,userr_id',
+        ]);
+
+        $companyId = (int) $authUser->company_idfk;
+
+        $branchesCount = DB::table('branch')
+            ->where('company_idfk', $companyId)
+            ->count();
+
+        $isFirstBranch = $branchesCount === 0;
+
+        $responsibleUser = null;
+        $responsibleName = null;
+        $responsibleEmail = null;
+        $previousBranchId = null;
+
+        if ($isFirstBranch) {
+            $responsibleUser = $authUser;
+            $responsibleName = $authUser->name_user;
+            $responsibleEmail = $authUser->email;
+        } else {
+            if (empty($validated['responsible_user_id'])) {
+                return response()->json([
+                    'errors' => [
+                        'responsible_user_id' => ['Debes seleccionar un gerente responsable para la sucursal.']
+                    ]
+                ], 422);
+            }
+
+            $responsibleUser = User::where('company_idfk', $companyId)
+                ->where('userr_id', $validated['responsible_user_id'])
+                ->first();
+
+            if (!$responsibleUser) {
+                return response()->json([
+                    'errors' => [
+                        'responsible_user_id' => ['El responsable seleccionado no pertenece a tu empresa.']
+                    ]
+                ], 422);
+            }
+
+            if (UserAccess::roleName($responsibleUser) !== 'GERENTE') {
+                return response()->json([
+                    'errors' => [
+                        'responsible_user_id' => ['Solo puedes asignar como responsable a un usuario con rol gerente.']
+                    ]
+                ], 422);
+            }
+
+            $responsibleName = $responsibleUser->name_user;
+            $responsibleEmail = $responsibleUser->email;
+
+            $previousBranchId = DB::table('user_branch')
+                ->where('userr_idfk', $responsibleUser->userr_id)
+                ->value('branch_idfk');
         }
 
-        if($this->gerenteCannotManageTarget($authUser, $user)){
-            return redirect()->route('settings', ['tab' => 'usuarios'])
-                ->withErrors(['error' => 'No tienes permisos para eliminar un administrador.']);
+        $branchId = DB::table('branch')->insertGetId([
+            'name_branch' => $validated['name_branch'],
+            'address' => $validated['address'],
+            'city' => $validated['city'],
+            'state' => $validated['state'],
+            'phone' => $validated['phone'] ?? null,
+            'responsible' => $responsibleName,
+            'email' => $responsibleEmail,
+            'company_idfk' => $companyId,
+        ]);
+
+        if ($responsibleUser) {
+            if (!$isFirstBranch && $previousBranchId && (int) $previousBranchId !== (int) $branchId) {
+                $this->clearBranchResponsibleIfMatches(
+                    (int) $previousBranchId,
+                    $responsibleName,
+                    $responsibleEmail,
+                    $companyId
+                );
+            }
+
+            DB::table('user_branch')->updateOrInsert(
+                ['userr_idfk' => $responsibleUser->userr_id],
+                ['branch_idfk' => $branchId]
+            );
         }
 
-        DB::table('user_branch')
-            ->where('userr_idfk', $user->userr_id)
-            ->delete();
-
-        $user->delete();
-
-        return redirect()->route('settings', ['tab' => 'usuarios'])
-            ->with('success', 'Usuario eliminado correctamente.');
+        return response()->json([
+            'message' => $isFirstBranch
+                ? 'Primera sucursal creada correctamente y asignada al owner.'
+                : 'Sucursal creada correctamente.',
+            'branch_id' => $branchId,
+        ]);
     }
 
     public function updateNotifications(Request $request)
@@ -425,85 +564,91 @@ class SettingsController extends Controller
 
     public function updatePreferences(Request $request)
     {
-        $authUser = Auth::user();
-
-        $settings = CompanySettings::firstOrCreate([
-            'company_idfk' => $authUser->company_idfk
+        $validated = $request->validate([
+            'timezone' => [
+                'required',
+                'string',
+                function ($attribute, $value, $fail) {
+                    if (!TimezoneCatalog::isValid($value)) {
+                        $fail('Selecciona una zona horaria válida.');
+                    }
+                },
+            ],
+            'date_format' => ['required', 'string', Rule::in(['d/m/Y', 'm/d/Y', 'Y-m-d'])],
+            'time_format' => ['required', 'string', Rule::in(['H:i', 'h:i A'])],
+            'price_decimals' => ['required', 'string', Rule::in(['0', '2'])],
+            'printer_width' => ['required', 'string', Rule::in(['58mm', '80mm'])],
+            'theme' => ['required', 'string', Rule::in(['light', 'dark', 'auto'])],
         ]);
 
-        $request->validate([
-            'timezone' => 'required|string|max:100',
-            'date_format' => 'required|string|max:30',
-            'time_format' => 'required|string|max:20',
-            'printer_width' => 'required|string|max:10',
-            'theme' => 'required|string|in:light,dark,auto',
-            'price_decimals' => 'required|in:0,2',
-        ]);
+        $companyId = (int) auth()->user()->company_idfk;
 
-        $settings->update([
-            'timezone' => $request->timezone,
-            'date_format' => $request->date_format,
-            'time_format' => $request->time_format,
-            'auto_print' => $request->has('auto_print'),
-            'show_taxes' => $request->has('show_taxes'),
-            'printer_width' => $request->printer_width,
-            'theme' => $request->theme,
-            'price_decimals' => $request->price_decimals,
-        ]);
+        $settings = CompanySettings::firstOrCreate(
+            ['company_idfk' => $companyId],
+            [
+                'notify_low_stock' => true,
+                'notify_sale_cancelled' => true,
+                'notify_out_of_stock' => true,
+                'timezone' => 'America/Mexico_City',
+                'date_format' => 'd/m/Y',
+                'time_format' => 'H:i',
+                'auto_print' => true,
+                'show_taxes' => true,
+                'printer_width' => '80mm',
+                'theme' => 'light',
+                'price_decimals' => '2',
+            ]
+        );
 
-        return redirect()->route('settings', ['tab' => 'preferencias'])
+        $settings->timezone = $validated['timezone'];
+        $settings->date_format = $validated['date_format'];
+        $settings->time_format = $validated['time_format'];
+        $settings->price_decimals = $validated['price_decimals'];
+        $settings->printer_width = $validated['printer_width'];
+        $settings->theme = $validated['theme'];
+        $settings->auto_print = $request->boolean('auto_print');
+        $settings->show_taxes = $request->boolean('show_taxes');
+        $settings->save();
+
+        return redirect()
+            ->route('settings', ['tab' => 'preferencias'])
             ->with('success', 'Preferencias actualizadas correctamente.');
     }
 
     public function resetPreferences()
     {
-        $authUser = Auth::user();
+        $companyId = (int) auth()->user()->company_idfk;
 
-        $settings = CompanySettings::firstOrCreate([
-            'company_idfk' => $authUser->company_idfk
-        ]);
+        $settings = CompanySettings::firstOrCreate(
+            ['company_idfk' => $companyId],
+            [
+                'notify_low_stock' => true,
+                'notify_sale_cancelled' => true,
+                'notify_out_of_stock' => true,
+                'timezone' => 'America/Mexico_City',
+                'date_format' => 'd/m/Y',
+                'time_format' => 'H:i',
+                'auto_print' => true,
+                'show_taxes' => true,
+                'printer_width' => '80mm',
+                'theme' => 'light',
+                'price_decimals' => '2',
+            ]
+        );
 
-        $settings->update([
-            'timezone' => 'America/Mexico_City',
-            'date_format' => 'd/m/Y',
-            'time_format' => 'H:i',
-            'auto_print' => true,
-            'show_taxes' => true,
-            'printer_width' => '80mm',
-            'theme' => 'light',
-            'price_decimals' => '2',
-        ]);
-
-        return redirect()->route('settings', ['tab' => 'preferencias'])
+        $settings->timezone = 'America/Mexico_City';
+        $settings->date_format = 'd/m/Y';
+        $settings->time_format = 'H:i';
+        $settings->price_decimals = '2';
+        $settings->printer_width = '80mm';
+        $settings->theme = 'light';
+        $settings->auto_print = true;
+        $settings->show_taxes = true;
+        $settings->save();
+         
+        return redirect()
+            ->route('settings', ['tab' => 'preferencias'])
             ->with('success', 'Preferencias restablecidas correctamente.');
-    }
-
-    private function isGerente(): bool
-    {
-        return $this->getUserRoleName(Auth::user()) === 'GERENTE';
-    }
-
-    private function getUserRoleName(User $user): string
-    {
-        return match ((int) $user->rol_idfk) {
-            1 => 'ADMINISTRADOR',
-            2 => 'GERENTE',
-            3 => 'CAJERO',
-            default => '',
-        };
-    }
-
-    private function isAdminRoleName(string $roleName): bool
-    {
-        return in_array($roleName, ['ADMIN', 'ADMINISTRADOR'], true);
-    }
-
-    private function gerenteCannotManageTarget(User $authUser, User $targetUser): bool
-    {
-        $authRole = $this->getUserRoleName($authUser);
-        $targetRole = $this->getUserRoleName($targetUser);
-
-        return $authRole === 'GERENTE' && $this->isAdminRoleName($targetRole);
     }
 
     private function getCompanyOwnerUserId(int $companyId): ?int
@@ -514,24 +659,59 @@ class SettingsController extends Controller
             ->value('userr_id');
     }
 
-    private function isCompanyOwner(User $user): bool
+    private function syncBranchResponsibleFromManager(?int $userId, ?int $branchId, int $companyId): void
     {
-        $ownerId = $this->getCompanyOwnerUserId((int) $user->company_idfk);
-
-        return $ownerId !== null && (int) $ownerId ===  (int) $user->userr_id;
-    }
-
-    private function cannotManageOwner(User $authUser, User $targetUser): bool
-    {
-        $ownerId = $this->getCompanyOwnerUserId((int) $authUser->company_idfk);
-
-        if($ownerId === null){
-            return false;
+        if (!$userId || !$branchId) {
+            return;
         }
 
-        $isTargetOwner = (int) $targetUser->userr_id === (int) $ownerId;
-        $isAuthOwner = (int) $authUser->userr_id === (int) $ownerId;
+        $manager = User::find($userId);
 
-        return $isTargetOwner && !$isAuthOwner;
+        if (!$manager || (int) $manager->company_idfk !== $companyId) {
+            return;
+        }
+
+        if (UserAccess::roleName($manager) !== 'GERENTE') {
+            return;
+        }
+
+        DB::table('branch')
+            ->where('branch_id', $branchId)
+            ->where('company_idfk', $companyId)
+            ->update([
+                'responsible' => $manager->name_user,
+                'email' => $manager->email,
+            ]);
+    }
+
+    private function clearBranchResponsibleIfMatches(?int $branchId, ?string $oldName, ?string $oldEmail, int $companyId): void
+    {
+        if (!$branchId) {
+            return;
+        }
+
+        $branch = DB::table('branch')
+            ->where('branch_id', $branchId)
+            ->where('company_idfk', $companyId)
+            ->first(['responsible', 'email']);
+
+        if (!$branch) {
+            return;
+        }
+
+        $branchName = trim((string) ($branch->responsible ?? ''));
+        $branchEmail = trim((string) ($branch->email ?? ''));
+        $compareName = trim((string) ($oldName ?? ''));
+        $compareEmail = trim((string) ($oldEmail ?? ''));
+
+        if ($branchName === $compareName && $branchEmail === $compareEmail) {
+            DB::table('branch')
+                ->where('branch_id', $branchId)
+                ->where('company_idfk', $companyId)
+                ->update([
+                    'responsible' => null,
+                    'email' => null,
+                ]);
+        }
     }
 }

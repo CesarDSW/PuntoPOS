@@ -11,6 +11,8 @@ class PosController extends SalesBaseController
 {
     public function status(Request $request)
     {
+        $this->authorizeSalesPosUse();
+
         $companyId = $this->getCompanyId();
         $userId = $this->getUserId();
 
@@ -49,6 +51,8 @@ class PosController extends SalesBaseController
 
     public function products(Request $request)
     {
+        $this->authorizeSalesPosUse();
+
         $validated = $request->validate([
             'branch_id' => ['nullable', 'integer', 'exists:branch,branch_id'],
             'search' => ['nullable', 'string', 'max:100'],
@@ -89,7 +93,7 @@ class PosController extends SalesBaseController
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('p.name_product', 'like', "%{$search}%")
-                  ->orWhere('p.code_product', 'like', "%{$search}%");
+                    ->orWhere('p.code_product', 'like', "%{$search}%");
             });
         }
 
@@ -107,6 +111,8 @@ class PosController extends SalesBaseController
 
     public function customers(Request $request)
     {
+        $this->authorizeSalesPosUse();
+
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'limit' => ['nullable', 'integer', 'min:1', 'max:20'],
@@ -118,6 +124,7 @@ class PosController extends SalesBaseController
 
         $query = DB::table('customer')
             ->where('company_idfk', $companyId)
+            ->where('status_customer', 1)
             ->select([
                 'customer_id',
                 'name_customer',
@@ -128,8 +135,8 @@ class PosController extends SalesBaseController
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('name_customer', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 

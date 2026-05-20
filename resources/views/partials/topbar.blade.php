@@ -1,19 +1,34 @@
 @php
-    $currentRoleName = match((int) auth()->user()->rol_idfk){
-        1 => 'ADMINISTRADOR',
-        2 => 'GERENTE',
-        3 => 'CAJERO',
-        default => '',
-    };
+    $branchContext = $topbarBranchContext ?? [
+        'can_switch' => false,
+        'branches' => collect(),
+        'current_branch' => null,
+    ];
 
-    $currentRoleLabel = match($currentRoleName) {
-        'ADMIN', 'ADMINISTRADOR' => 'Administrador',
+    $branchCreateContext = $topbarBranchCreateContext ?? [
+        'can_create' => false,
+        'manager_users' => collect(),
+        'branch_count' => 0,
+        'is_first_branch' => false,
+        'has_managers' => false,
+    ];
+
+    $currentBranch = $branchContext['current_branch'];
+    $canSwitchBranch = $branchContext['can_switch'];
+    $canCreateBranch = $branchCreateContext['can_create'];
+    $canOpenBranchDropdown = $canSwitchBranch || $canCreateBranch;
+
+    $branchCount = (int) ($branchCreateContext['branch_count'] ?? 0);
+    $isFirstBranch = (bool) ($branchCreateContext['is_first_branch'] ?? false);
+    $hasManagers = (bool) ($branchCreateContext['has_managers'] ?? false);
+
+    $roleName = \App\Support\UserAccess::roleName(auth()->user());
+    $displayRole = match ($roleName) {
+        'ADMINISTRADOR' => 'Administrador',
         'GERENTE' => 'Gerente',
         'CAJERO' => 'Cajero',
         default => 'Sin rol',
     };
-
-    $isGerente = $currentRoleName === 'GERENTE';
 @endphp
 
 <header class="topbar">
@@ -22,29 +37,57 @@
     </div>
 
     <div class="topbar-right">
-        @if(!$isGerente)
-            <div class="branch-selector">
+        <div class="branch-selector">
+            @if($canOpenBranchDropdown)
                 <button type="button" class="branch-button" id="branchButton">
                     <span class="branch-label">Sucursal actual</span>
-                    <span class="branch-name" id="currentBranchName">Cargando...</span>
+                    <span class="branch-name" id="currentBranchName">
+                        {{ $currentBranch?->name_branch ?? 'Sin sucursal' }}
+                    </span>
                 </button>
 
                 <div class="branch-dropdown" id="branchDropdown">
-                    <div id="branchDropdownList"></div>
+                    <div id="branchDropdownList">
+                        @if($canSwitchBranch && $branchContext['branches']->count())
+                            @foreach($branchContext['branches'] as $branch)
+                                <form method="POST" action="{{ route('current-branch.update') }}">
+                                    @csrf
+                                    <input type="hidden" name="branch_id" value="{{ $branch->branch_id }}">
+                                    <button
+                                        type="submit"
+                                        class="branch-option {{ (int) optional($currentBranch)->branch_id === (int) $branch->branch_id ? 'active' : '' }}"
+                                    >
+                                        {{ $branch->name_branch }}
+                                    </button>
+                                </form>
+                            @endforeach
+                        @else
+                            <div class="branch-empty">No hay sucursales disponibles</div>
+                        @endif
+                    </div>
 
-                    <div class="branch-dropdown-divider"></div>
+                    @if($canCreateBranch)
+                        <div class="branch-dropdown-divider"></div>
 
-                    <button type="button" class="branch-create-link" id="openCreateBranchModal">
-                        + Crear nueva sucursal
-                    </button>
+                        <button type="button" class="branch-create-link" id="openCreateBranchModal">
+                            + Crear nueva sucursal
+                        </button>
+                    @endif
                 </div>
-            </div>
-        @endif
+            @else
+                <div class="branch-button static">
+                    <span class="branch-label">Sucursal actual</span>
+                    <span class="branch-name">
+                        {{ $currentBranch?->name_branch ?? 'Sin sucursal' }}
+                    </span>
+                </div>
+            @endif
+        </div>
 
         <div class="user-box">
             <div class="user-info">
                 <div class="user-name">{{ auth()->user()->name_user }}</div>
-                <div class="user-role">{{ $currentRoleLabel }}</div>
+                <div class="user-role">{{ $displayRole }}</div>
             </div>
 
             <div class="avatar">
@@ -59,7 +102,7 @@
     </div>
 </header>
 
-@if(!$isGerente)
+@if($canCreateBranch)
 <div id="branchModalOverlay" class="branch-modal-overlay">
     <div class="branch-modal">
         <div class="branch-modal-header">
@@ -67,7 +110,11 @@
 
             <div class="branch-modal-title-wrap">
                 <h2 class="branch-modal-title">Crear nueva sucursal</h2>
-                <p class="branch-modal-subtitle">Expande tu negocio a nuevas ubicaciones</p>
+                <p class="branch-modal-subtitle" id="branchModalSubtitle">
+                    {{ $isFirstBranch
+                        ? 'Esta será la primera sucursal del negocio y se asignará automáticamente al owner.'
+                        : 'Selecciona el gerente responsable de la nueva sucursal.' }}
+                </p>
             </div>
 
             <button type="button" class="branch-modal-close" id="closeCreateBranchModal">×</button>
@@ -75,6 +122,8 @@
 
         <div class="branch-modal-body">
             <form id="createBranchForm">
+                @csrf
+
                 <div class="branch-section">
                     <div class="branch-section-title">Información básica</div>
 
@@ -86,34 +135,54 @@
                     <div class="branch-section-title">Ubicación</div>
 
                     <label class="branch-field-label" for="address">Dirección *</label>
-                    <input type="text" id="address" name="address" class="branch-field-input" placeholder="Calle, número, colonia" maxlength="50" required>
+                    <input type="text" id="address" name="address" class="branch-field-input" placeholder="Calle, número, colonia" maxlength="150" required>
 
-                    <label class="branch-field-label" for="city_state">Ciudad y Estado *</label>
-                    <input type="text" id="city_state" name="city_state" class="branch-field-input" placeholder="Ej: Ciudad de México, CDMX" maxlength="101" required>
+                    <label class="branch-field-label" for="city">Ciudad *</label>
+                    <input type="text" id="city" name="city" class="branch-field-input" placeholder="Ej: Ciudad de México" maxlength="100" required>
+
+                    <label class="branch-field-label" for="state">Estado *</label>
+                    <input type="text" id="state" name="state" class="branch-field-input" placeholder="Ej: CDMX" maxlength="100" required>
 
                     <label class="branch-field-label" for="phone">Teléfono</label>
-                    <input type="text" id="phone" name="phone" class="branch-field-input" placeholder="(55) 1234-5678" maxlength="10">
+                    <input type="text" id="phone" name="phone" class="branch-field-input" placeholder="5512345678" maxlength="10">
                 </div>
 
-                <div class="branch-section">
+                <div class="branch-section" id="branchResponsibleSection">
                     <div class="branch-section-title">Responsable de la sucursal</div>
 
-                    <label class="branch-field-label" for="responsible">Nombre del responsable</label>
-                    <input type="text" id="responsible" name="responsible" class="branch-field-input" placeholder="Nombre completo" maxlength="50">
-
-                    <label class="branch-field-label" for="email">Correo electrónico</label>
-                    <input type="email" id="email" name="email" class="branch-field-input" placeholder="correo@ejemplo.com" maxlength="320">
+                    <label class="branch-field-label" for="responsible_user_id">Gerente responsable *</label>
+                    <select id="responsible_user_id" name="responsible_user_id" class="branch-field-input">
+                        <option value="">Selecciona un gerente</option>
+                        @foreach($branchCreateContext['manager_users'] as $manager)
+                            <option value="{{ $manager->userr_id }}">
+                                {{ $manager->name_user }}{{ $manager->email ? ' - ' . $manager->email : '' }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
 
-                <div class="branch-note">
-                    <strong>Nota:</strong> Una vez creada la sucursal, podrás asignar usuarios, configurar inventario independiente y gestionar las ventas de forma separada.
+                <div class="branch-note" id="branchOwnerNote" style="{{ $isFirstBranch ? '' : 'display:none;' }}">
+                    <strong>Nota:</strong> Como es la primera sucursal del negocio, se asignará automáticamente al owner actual.
+                </div>
+
+                <div class="branch-note" id="branchManagerRequiredNote" style="{{ !$isFirstBranch ? '' : 'display:none;' }}">
+                    <strong>Nota:</strong> A partir de la segunda sucursal debes seleccionar un gerente responsable.
+                </div>
+
+                <div class="branch-note" id="branchNoManagersNote" style="{{ (!$isFirstBranch && !$hasManagers) ? '' : 'display:none;' }}">
+                    <strong>Atención:</strong> Primero debes crear al menos un usuario con rol gerente para poder registrar otra sucursal.
                 </div>
 
                 <div id="branchFormMessage" class="branch-form-message" style="display: none;"></div>
 
                 <div class="branch-modal-footer">
                     <button type="button" class="branch-cancel-btn" id="cancelCreateBranchModal">Cancelar</button>
-                    <button type="submit" class="branch-submit-btn" id="submitCreateBranch">
+                    <button
+                        type="submit"
+                        class="branch-submit-btn"
+                        id="submitCreateBranch"
+                        {{ (!$isFirstBranch && !$hasManagers) ? 'disabled' : '' }}
+                    >
                         <span id="submitCreateBranchText">Crear sucursal</span>
                     </button>
                 </div>
@@ -123,16 +192,11 @@
 </div>
 @endif
 
+@if($canOpenBranchDropdown || $canCreateBranch)
 <script>
-document.addEventListener('DOMContentLoaded', async function () {
-    const isGerente = @json($isGerente);
-
+document.addEventListener('DOMContentLoaded', function () {
     const branchButton = document.getElementById('branchButton');
     const branchDropdown = document.getElementById('branchDropdown');
-    const branchDropdownList = document.getElementById('branchDropdownList');
-    const currentBranchName = document.getElementById('currentBranchName');
-    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-    const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
 
     const openCreateBranchModal = document.getElementById('openCreateBranchModal');
     const closeCreateBranchModal = document.getElementById('closeCreateBranchModal');
@@ -142,71 +206,69 @@ document.addEventListener('DOMContentLoaded', async function () {
     const branchFormMessage = document.getElementById('branchFormMessage');
     const submitCreateBranch = document.getElementById('submitCreateBranch');
     const submitCreateBranchText = document.getElementById('submitCreateBranchText');
+    const responsibleSection = document.getElementById('branchResponsibleSection');
+    const responsibleSelect = document.getElementById('responsible_user_id');
+    const branchOwnerNote = document.getElementById('branchOwnerNote');
+    const branchManagerRequiredNote = document.getElementById('branchManagerRequiredNote');
+    const branchNoManagersNote = document.getElementById('branchNoManagersNote');
+    const branchModalSubtitle = document.getElementById('branchModalSubtitle');
 
-    async function loadBranches() {
-        try {
-            const response = await fetch('/api/branches', {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
+    const isFirstBranch = @json($isFirstBranch);
+    const hasManagers = @json($hasManagers);
 
-            const data = await response.json().catch(() => ({}));
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
 
-            if (currentBranchName) {
-                currentBranchName.textContent = data.current_branch_name ?? 'Sin sucursal';
+    if (branchButton && branchDropdown) {
+        branchButton.addEventListener('click', function (e) {
+            e.stopPropagation();
+            branchDropdown.classList.toggle('show');
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!branchButton.contains(e.target) && !branchDropdown.contains(e.target)) {
+                branchDropdown.classList.remove('show');
             }
+        });
+    }
 
-            if (!branchDropdownList) return;
+    function applyBranchModalMode() {
+        if (responsibleSection) {
+            responsibleSection.style.display = isFirstBranch ? 'none' : 'block';
+        }
 
-            branchDropdownList.innerHTML = '';
-
-            if (!data.branches || data.branches.length === 0) {
-                const empty = document.createElement('div');
-                empty.className = 'branch-empty';
-                empty.textContent = 'No hay sucursales registradas';
-                branchDropdownList.appendChild(empty);
-                return;
+        if (responsibleSelect) {
+            responsibleSelect.required = !isFirstBranch;
+            if (isFirstBranch) {
+                responsibleSelect.value = '';
             }
+        }
 
-            data.branches.forEach(branch => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'branch-option' + (branch.branch_id == data.current_branch_id ? ' active' : '');
-                btn.textContent = branch.name_branch;
+        if (branchOwnerNote) {
+            branchOwnerNote.style.display = isFirstBranch ? 'block' : 'none';
+        }
 
-                btn.addEventListener('click', async () => {
-                    const saveResponse = await fetch('/api/branches/current', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: JSON.stringify({
-                            branch_id: branch.branch_id
-                        })
-                    });
+        if (branchManagerRequiredNote) {
+            branchManagerRequiredNote.style.display = !isFirstBranch ? 'block' : 'none';
+        }
 
-                    if (saveResponse.ok) {
-                        window.location.reload();
-                    }
-                });
+        if (branchNoManagersNote) {
+            branchNoManagersNote.style.display = (!isFirstBranch && !hasManagers) ? 'block' : 'none';
+        }
 
-                branchDropdownList.appendChild(btn);
-            });
-        } catch (error) {
-            if (currentBranchName) {
-                currentBranchName.textContent = 'Sin sucursal';
-            }
+        if (branchModalSubtitle) {
+            branchModalSubtitle.textContent = isFirstBranch
+                ? 'Esta será la primera sucursal del negocio y se asignará automáticamente al owner.'
+                : 'Selecciona el gerente responsable de la nueva sucursal.';
+        }
+
+        if (submitCreateBranch) {
+            submitCreateBranch.disabled = !isFirstBranch && !hasManagers;
         }
     }
 
     function resetBranchMessage() {
         if (!branchFormMessage) return;
-
         branchFormMessage.style.display = 'none';
         branchFormMessage.textContent = '';
         branchFormMessage.className = 'branch-form-message';
@@ -214,22 +276,19 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     function openModal() {
         if (!branchModalOverlay) return;
-
         branchModalOverlay.classList.add('show');
-        if (branchDropdown) {
-            branchDropdown.classList.remove('show');
-        }
+        if (branchDropdown) branchDropdown.classList.remove('show');
+        if (createBranchForm) createBranchForm.reset();
         resetBranchMessage();
+        applyBranchModalMode();
     }
 
     function closeModal() {
         if (!branchModalOverlay) return;
-
         branchModalOverlay.classList.remove('show');
-        if (createBranchForm) {
-            createBranchForm.reset();
-        }
+        if (createBranchForm) createBranchForm.reset();
         resetBranchMessage();
+        applyBranchModalMode();
     }
 
     function showError(message) {
@@ -246,36 +305,13 @@ document.addEventListener('DOMContentLoaded', async function () {
         branchFormMessage.style.display = 'block';
     }
 
-    if (!isGerente && branchButton && branchDropdown) {
-        branchButton.addEventListener('click', function (e) {
-            e.stopPropagation();
-            branchDropdown.classList.toggle('show');
-        });
-
-        document.addEventListener('click', function (e) {
-            if (!branchButton.contains(e.target) && !branchDropdown.contains(e.target)) {
-                branchDropdown.classList.remove('show');
-            }
-        });
-    }
-
-    if (openCreateBranchModal) {
-        openCreateBranchModal.addEventListener('click', openModal);
-    }
-
-    if (closeCreateBranchModal) {
-        closeCreateBranchModal.addEventListener('click', closeModal);
-    }
-
-    if (cancelCreateBranchModal) {
-        cancelCreateBranchModal.addEventListener('click', closeModal);
-    }
+    if (openCreateBranchModal) openCreateBranchModal.addEventListener('click', openModal);
+    if (closeCreateBranchModal) closeCreateBranchModal.addEventListener('click', closeModal);
+    if (cancelCreateBranchModal) cancelCreateBranchModal.addEventListener('click', closeModal);
 
     if (branchModalOverlay) {
         branchModalOverlay.addEventListener('click', function (e) {
-            if (e.target === branchModalOverlay) {
-                closeModal();
-            }
+            if (e.target === branchModalOverlay) closeModal();
         });
     }
 
@@ -284,39 +320,28 @@ document.addEventListener('DOMContentLoaded', async function () {
             e.preventDefault();
 
             resetBranchMessage();
+            applyBranchModalMode();
+
+            if (!isFirstBranch && !hasManagers) {
+                showError('Primero debes crear al menos un gerente.');
+                return;
+            }
 
             const formData = new FormData(createBranchForm);
-            const cityState = (formData.get('city_state') || '').trim();
-
-            if (!cityState.includes(',')) {
-                showError('En "Ciudad y Estado" escribe el formato: Ciudad, Estado');
-                return;
-            }
-
-            const cityStateParts = cityState.split(',');
-            const state = cityStateParts.pop().trim();
-            const city = cityStateParts.join(',').trim();
-
-            if (city === '' || state === '') {
-                showError('En "Ciudad y Estado" escribe el formato: Ciudad, Estado');
-                return;
-            }
-
             const payload = {
                 name_branch: (formData.get('name_branch') || '').trim(),
                 address: (formData.get('address') || '').trim(),
-                city: city,
-                state: state,
+                city: (formData.get('city') || '').trim(),
+                state: (formData.get('state') || '').trim(),
                 phone: (formData.get('phone') || '').trim(),
-                responsible: (formData.get('responsible') || '').trim(),
-                email: (formData.get('email') || '').trim(),
+                responsible_user_id: isFirstBranch ? null : (formData.get('responsible_user_id') || null)
             };
 
             submitCreateBranch.disabled = true;
             submitCreateBranchText.textContent = 'Creando...';
 
             try {
-                const response = await fetch('/api/branches', {
+                const response = await fetch('{{ route('branches.store') }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -337,7 +362,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                         showError(data.message || 'No se pudo crear la sucursal.');
                     }
 
-                    submitCreateBranch.disabled = false;
+                    applyBranchModalMode();
                     submitCreateBranchText.textContent = 'Crear sucursal';
                     return;
                 }
@@ -349,12 +374,13 @@ document.addEventListener('DOMContentLoaded', async function () {
                 }, 700);
             } catch (error) {
                 showError('Ocurrió un error al crear la sucursal.');
-                submitCreateBranch.disabled = false;
+                applyBranchModalMode();
                 submitCreateBranchText.textContent = 'Crear sucursal';
             }
         });
     }
 
-    loadBranches();
+    applyBranchModalMode();
 });
 </script>
+@endif

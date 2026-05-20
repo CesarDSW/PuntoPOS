@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Inventory;
 use App\Http\Controllers\Controller;
 use App\Services\NotificationService;
 use App\Support\CompanyPreference;
+use App\Support\UserAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +30,24 @@ class InventoryAdjustmentController extends Controller
         }
 
         return $user;
+    }
+
+    private function authorizeInventoryAdjust(): void
+    {
+        $user = Auth::user();
+
+        if (!$user || !UserAccess::has($user, 'inventory.adjust')) {
+            abort(403, 'No autorizado para ajustar inventario.');
+        }
+    }
+
+    private function authorizeInventoryHistory(): void
+    {
+        $user = Auth::user();
+
+        if (!$user || !UserAccess::has($user, 'inventory.history.view')) {
+            abort(403, 'No autorizado para ver el historial de inventario.');
+        }
     }
 
     private function getBranchOrFail(int $branchId, int $companyId)
@@ -98,6 +117,8 @@ class InventoryAdjustmentController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorizeInventoryAdjust();
+
         $validated = $request->validate([
             'branch_id'  => ['nullable', 'integer', 'exists:branch,branch_id'],
             'product_id' => ['required', 'integer', 'exists:productt,product_id'],
@@ -213,7 +234,7 @@ class InventoryAdjustmentController extends Controller
                 ->update([
                     'stocks' => $newStock,
                 ]);
-            
+
             app(NotificationService::class)->handleStockChanged(
                 companyId: $companyId,
                 branchId: $branchId,
@@ -227,22 +248,22 @@ class InventoryAdjustmentController extends Controller
             return [
                 'message' => 'Ajuste de inventario realizado correctamente.',
                 'data' => [
-                    'movement_id'    => $movementId,
-                    'date_time'      => now()->toDateTimeString(),
+                    'movement_id' => $movementId,
+                    'date_time' => now()->toDateTimeString(),
                     'date_time_display' => CompanyPreference::formatDateTimeForCompany($companyId, now()),
-                    'type'           => $movementType,
-                    'reason'         => $reason,
-                    'branch_id'      => $branchId,
-                    'branch_name'    => $branch->name_branch,
-                    'product_id'     => $productId,
-                    'product_name'   => $product->name_product,
-                    'product_code'   => $product->code_product,
-                    'quantity'       => $quantity,
+                    'type' => $movementType,
+                    'reason' => $reason,
+                    'branch_id' => $branchId,
+                    'branch_name' => $branch->name_branch,
+                    'product_id' => $productId,
+                    'product_name' => $product->name_product,
+                    'product_code' => $product->code_product,
+                    'quantity' => $quantity,
                     'previous_stock' => $currentStock,
-                    'new_stock'      => $newStock,
-                    'minimum_stock'  => $minimumStock,
-                    'userr_id'       => $userId,
-                    'user_name'      => $user->name_user,
+                    'new_stock' => $newStock,
+                    'minimum_stock' => $minimumStock,
+                    'userr_id' => $userId,
+                    'user_name' => $user->name_user,
                 ],
             ];
         });
@@ -252,6 +273,8 @@ class InventoryAdjustmentController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorizeInventoryHistory();
+
         $validated = $request->validate([
             'branch_id' => ['nullable', 'integer', 'exists:branch,branch_id'],
             'type'      => ['nullable', 'string'],
@@ -352,6 +375,10 @@ class InventoryAdjustmentController extends Controller
             });
         }
 
+        $history = $query
+            ->orderByDesc('im.date_time')
+            ->paginate($perPage);
+
         $history->getCollection()->transform(function ($row) use ($companyId) {
             $row->date_time_display = CompanyPreference::formatDateTimeForCompany($companyId, $row->date_time);
             return $row;
@@ -362,6 +389,8 @@ class InventoryAdjustmentController extends Controller
 
     public function bulkStore(Request $request)
     {
+        $this->authorizeInventoryAdjust();
+
         $validated = $request->validate([
             'branch_id'          => ['nullable', 'integer', 'exists:branch,branch_id'],
             'type'               => ['required', 'string'],
@@ -523,7 +552,7 @@ class InventoryAdjustmentController extends Controller
                     ->update([
                         'stocks' => $item['new_stock'],
                     ]);
-                
+
                 app(NotificationService::class)->handleStockChanged(
                     companyId: $companyId,
                     branchId: $branchId,

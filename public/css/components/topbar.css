@@ -123,6 +123,45 @@
     margin-bottom: 14px;
 }
 
+.branch-dropdown form {
+    margin: 0;
+}
+
+.branch-option {
+    width: 100%;
+    display: block;
+    border: none;
+    background: transparent;
+    text-align: left;
+    padding: 12px 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+}
+
+.branch-option.active,
+.branch-option:hover {
+    background: rgba(59, 130, 246, 0.18);
+}
+
+.branch-create-link {
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: left;
+    padding: 12px 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    color: #2d5bff;
+    font: inherit;
+    font-weight: 600;
+}
+
+.branch-create-link:hover {
+    background: rgba(59, 130, 246, 0.10);
+}
+
 .branch-field-label {
     display: block;
     font-weight: 600;
@@ -208,6 +247,34 @@
 .branch-submit-btn:disabled {
     opacity: 0.7;
     cursor: not-allowed;
+}
+
+.topbar-branch-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.branch-native-select {
+    width: 100%;
+    border: 1px solid rgba(148, 163, 184, 0.30);
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    outline: none;
+}
+
+.branch-native-select option {
+    color: #111827;
+}
+
+.branch-button.static {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
 }
 
 .user-info {

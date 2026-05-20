@@ -10,6 +10,8 @@ class CashRegisterController extends SalesBaseController
 {
     public function open(Request $request)
     {
+        $this->authorizeCashOpen();
+
         $validated = $request->validate([
             'branch_id' => ['nullable', 'integer', 'exists:branch,branch_id'],
             'opening_amount' => ['required', 'numeric', 'min:0'],
@@ -62,6 +64,8 @@ class CashRegisterController extends SalesBaseController
 
     public function close(Request $request)
     {
+        $this->authorizeCashClose();
+
         $validated = $request->validate([
             'closing_amount' => ['required', 'numeric', 'min:0'],
             'notes_closing' => ['nullable', 'string', 'max:255'],
@@ -133,6 +137,8 @@ class CashRegisterController extends SalesBaseController
 
     public function history(Request $request)
     {
+        $this->authorizeCashHistoryView();
+
         $companyId = $this->getCompanyId();
 
         $validated = $request->validate([
@@ -211,6 +217,8 @@ class CashRegisterController extends SalesBaseController
 
     public function show(int $id)
     {
+        $this->authorizeCashHistoryView();
+
         $companyId = $this->getCompanyId();
 
         $session = DB::table('cash_register_session as cs')
