@@ -1888,6 +1888,42 @@ select.form-input{
         transform: translateX(0);
     }
 }
+.planes-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.planes-modal.show {
+    display: flex;
+}
+
+.planes-content {
+    width: 95%;
+    max-width: 1100px;
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.planes-header {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    color: #fff;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.plans-grid {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+}
+
 
 
 
