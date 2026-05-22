@@ -342,3 +342,10 @@ Route::get(
     [StripeController::class, 'portalCliente']
 
 )->name('portal.cliente');
+
+use App\Http\Controllers\SupportController;
+
+Route::post(
+    '/support-ticket',
+    [SupportController::class, 'ticket']
+)->name('support.ticket');
