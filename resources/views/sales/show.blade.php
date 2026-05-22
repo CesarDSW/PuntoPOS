@@ -67,7 +67,9 @@
         <a href="/ventas" class="btn">Volver</a>
         <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
         <button class="btn" onclick="openSmsModal()">Enviar por SMS</button>
+        <a href="{{ route('factura.generar', $saleId) }}" class="btn btn-primary"> Factura</a>
         <a href="/ventas/pos" class="btn">Nueva venta</a>
+       
     </div>
 
     <div class="ticket-card">

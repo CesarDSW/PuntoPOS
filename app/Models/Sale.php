@@ -7,7 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 class Sale extends Model
 {
     protected $table = 'sale';
-    protected $primary_key = 'sale_id';
+    protected $primaryKey = 'sale_id';
+
+    public $incrementing = true;
+    protected $keyType = 'int';
+
+    public $timestamps = false; // 👈 MUY IMPORTANTE
 
     protected $fillable = [
         'date_time',
@@ -19,13 +24,27 @@ class Sale extends Model
         'discount',
         'total',
         'status_sale',
+        'payment_status',
+        'stripe_id',
     ];
-     public function payment()
-{
-    return $this->hasOne(\App\Models\Payment::class, 'sale_idfk', 'sale_id');
-}
-public function customer()
-{
-    return $this->belongsTo(\App\Models\Customer::class, 'customer_idfk', 'customer_id');
-}
+
+    public function payment()
+    {
+        return $this->hasOne(\App\Models\Payment::class, 'sale_idfk', 'sale_id');
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(\App\Models\Customer::class, 'customer_idfk', 'customer_id');
+    }
+
+    public function items()
+    {
+        return $this->hasMany(\App\Models\SaleDetail::class, 'sale_idfk', 'sale_id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(\App\Models\Branch::class, 'branch_idfk', 'id');
+    }
 }

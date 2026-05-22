@@ -4,22 +4,19 @@
 
 <h2>Administra las preferencias de tu negocio</h2>
 
+{{-- ================= ONBOARDING ================= --}}
 @if($showOnboarding)
 <div class="onboarding-overlay">
-
     <div class="onboarding-modal">
 
-        <!-- HEADER -->
         <div class="onboarding-header">
             <div>
                 <h2>¡Bienvenido a Punto! 🎉</h2>
                 <p>Completa tu negocio en menos de 2 minutos</p>
             </div>
-
             <span class="cerrar" onclick="cerrarOnboarding()">✖</span>
         </div>
 
-        <!-- PROGRESO -->
         <div class="onboarding-progress">
             <div class="progress-top">
                 <span>20% completado</span>
@@ -31,16 +28,13 @@
             </div>
         </div>
 
-        <!-- FORM -->
         <form method="POST" action="{{ route('onboarding.store') }}" enctype="multipart/form-data">
             @csrf
 
             <div class="onboarding-body">
 
-                <!-- LOGO BONITO -->
                 <div class="form-group">
                     <label>Logo del negocio</label>
-
                     <label class="upload-box">
                         <input type="file" name="logo">
                         <div>
@@ -51,13 +45,11 @@
                     </label>
                 </div>
 
-                <!-- DIRECCIÓN -->
                 <div class="form-group">
                     <label>Dirección</label>
                     <input type="text" name="address" class="form-input" placeholder="Ej. Av. Reforma 123">
                 </div>
 
-                <!-- MONEDA -->
                 <div class="form-group">
                     <label>Moneda</label>
                     <select name="currency" class="form-input">
@@ -66,7 +58,6 @@
                     </select>
                 </div>
 
-                <!-- HORARIOS -->
                 <div class="form-row">
                     <div class="form-group">
                         <label>Hora de apertura</label>
@@ -81,9 +72,7 @@
 
             </div>
 
-            <!-- FOOTER BONITO -->
             <div class="onboarding-footer">
-
                 <button type="submit" name="skip" value="1" class="btn-secondary">
                     Omitir por ahora
                 </button>
@@ -91,10 +80,68 @@
                 <button type="submit" class="btn-primary">
                     Guardar y continuar
                 </button>
-
             </div>
 
         </form>
+
+    </div>
+</div>
+@endif
+
+
+{{-- ================= BANNER ================= --}}
+@if(
+    $subscription
+    &&
+    $subscription->plan === 'trial'
+)
+
+<div class="trial-banner">
+
+    <div class="trial-left">
+
+        <div class="trial-icon">
+            ✨
+        </div>
+
+        <div>
+
+            <strong>
+                Estás usando Punto en prueba gratuita
+            </strong>
+
+            <p>
+                Disfruta todas las funcionalidades premium sin restricciones
+            </p>
+
+        </div>
+
+    </div>
+
+    <div class="trial-right">
+
+        <span class="trial-days">
+
+            {{ $diasRestantes }} restantes
+
+        </span>
+
+        <a
+            href="#"
+            onclick="abrirPlanes()"
+            class="btn-banner-planes">
+
+            Ver planes →
+
+        </a>
+
+        <span
+    class="trial-close"
+    onclick="cerrarBanner()">
+
+    ✖
+
+</span>
 
     </div>
 
@@ -104,8 +151,164 @@
 
 
 
-<div class="cards">
+{{-- ================= MODAL (CORRECTO) ================= --}}
+<div id="modalPlanes" class="planes-modal">
 
+    <div class="planes-content">
+
+        <!-- HEADER PRO -->
+        <div class="planes-header">
+            <div class="header-text">
+                <h2>Elige tu plan perfecto</h2>
+                <p>Desbloquea todo el potencial de tu negocio 🚀</p>
+            </div>
+
+            <span onclick="cerrarPlanes()" class="close-btn">✖</span>
+        </div>
+
+        <!-- TOGGLE PRO -->
+        <div class="billing-toggle">
+            <div class="toggle-wrapper">
+                <button class="toggle-btn active" onclick="cambiarPlan('mensual')">
+                    Mensual
+                </button>
+
+                <button class="toggle-btn" onclick="cambiarPlan('anual')">
+                    Anual
+                </button>
+            </div>
+        </div>
+
+        {{-- ================= PLANES ================= --}}
+<div class="plans-grid">
+
+    <!-- BASICO -->
+    <div class="plan-card">
+        <div class="plan-icon icon-basic">✨</div>
+
+        <h3>Básico</h3>
+        <small>Perfecto para empezar</small>
+
+        <div class="price">
+            <span class="precio" data-mensual="549" data-anual="458">$549</span>
+            <span>MXN/mes</span>
+        </div>
+
+        <p class="annual-text">Facturado anualmente: $5,490 MXN</p>
+        <p class="save-text">Ahoras: $1,098 MXN</p>
+
+        <hr class="divider">
+
+        <ul class="features">
+            <li>✔ Hasta 500 productos</li>
+            <li>✔ 1 usuario</li>
+            <li>✔ Ventas ilimitadas</li>
+            <li>✔ Reportes básicos</li>
+            <li>✔ Soporte por email</li>
+            <li>✔ App móvil</li>
+        </ul>
+
+        <button 
+            class="btn-plan"
+            onclick="seleccionarPlan(this, 'basico')">
+            Continuar con este plan
+        </button>
+    </div>
+
+
+    <!-- PRO -->
+    <div class="plan-card popular">
+        <div class="popular-badge">⭐ Más popular</div>
+
+        <div class="plan-icon icon-pro">📈</div>
+
+        <h3>Pro</h3>
+        <small>Para negocios en crecimiento</small>
+
+        <div class="price">
+            <span class="precio" data-mensual="899" data-anual="749">$899</span>
+            <span>MXN/mes</span>
+        </div>
+
+        <p class="annual-text">Facturado anualmente: $8,990 MXN</p>
+        <p class="save-text">Ahoras: $1,798 MXN</p>
+
+        <hr class="divider">
+
+        <ul class="features">
+            <li>✔ Productos ilimitados</li>
+            <li>✔ Hasta 5 usuarios</li>
+            <li>✔ Ventas ilimitadas</li>
+            <li>✔ Reportes avanzados</li>
+            <li>✔ Soporte prioritario</li>
+            <li>✔ App móvil</li>
+            <li>✔ Múltiples sucursales</li>
+            <li>✔ Inventario avanzado</li>
+            <li>✔ Integraciones API</li>
+        </ul>
+
+        <button 
+            class="btn-plan"
+            onclick="seleccionarPlan(this, 'pro')">
+            Continuar con este plan
+        </button>
+    </div>
+
+
+    <!-- NEGOCIO -->
+    <div class="plan-card">
+        <div class="plan-icon icon-business">🚀</div>
+
+        <h3>Negocio</h3>
+        <small>Para operaciones grandes</small>
+
+        <div class="price">
+            <span class="precio" data-mensual="1499" data-anual="1249">$1499</span>
+            <span>MXN/mes</span>
+        </div>
+
+        <p class="annual-text">Facturado anualmente: $14,990 MXN</p>
+        <p class="save-text">Ahoras: $2,998 MXN</p>
+
+        <hr class="divider">
+
+        <ul class="features">
+            <li>✔ Todo lo del plan Pro</li>
+            <li>✔ Usuarios ilimitados</li>
+            <li>✔ Sucursales ilimitadas</li>
+            <li>✔ Reportes personalizados</li>
+            <li>✔ Soporte 24/7</li>
+            <li>✔ Gestor de cuenta dedicado</li>
+            <li>✔ Capacitación incluida</li>
+            <li>✔ Integraciones premium</li>
+            <li>✔ White label</li>
+        </ul>
+
+        <button 
+            class="btn-plan"
+            onclick="seleccionarPlan(this, 'negocio')">
+            Continuar con este plan
+        </button>
+    </div>
+
+</div>
+        <!-- FOOTER -->
+        <div class="plans-footer">
+            <p class="footer-title">Todos los planes incluyen:</p>
+            <div class="footer-items">
+                <div>🛡️ Pago seguro</div>
+                <div>⚡ Activación inmediata</div>
+                <div>👤 Sin permanencia</div>
+                <div>📦 Cancela cuando quieras</div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+{{-- ================= DASHBOARD ================= --}}
+<div class="cards">
     <div class="card">
         <h4>Ventas del día</h4>
         <p><strong>$</strong> {{ number_format($ventasDia ?? 0, 2) }}</p>
@@ -125,9 +328,7 @@
         <h4>Pedidos</h4>
         <p>{{ $pedidos ?? 0 }}</p>
     </div>
-
 </div>
-
 <div class="charts">
 
     <div class="chart-card">
@@ -179,11 +380,8 @@
 </form>
 
     <table class="sales-table">
-
-        <!-- HEADER -->
         <thead>
             <tr>
-                
                 <th>Cliente</th>
                 <th>Monto</th>
                 <th>Método</th>
@@ -191,8 +389,6 @@
                 <th>Fecha</th>
             </tr>
         </thead>
-
-        <!-- BODY -->
         <tbody>
             @forelse($ventas as $venta)
             <tr>
@@ -286,7 +482,60 @@ new Chart(document.getElementById('pagosChart'), {
         }
     }
 });
-</script>
+
+function abrirPlanes() {
+    document.getElementById('modalPlanes').classList.add('show');
+}
+
+function cerrarPlanes() {
+    document.getElementById('modalPlanes').classList.remove('show');
+}
+
+function cambiarPlan(tipo) {
+
+    // CAMBIAR BOTON ACTIVO
+    document.querySelectorAll('.toggle-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // ACTIVAR EL BOTON CORRECTO
+    if (tipo === 'mensual') {
+        document.querySelectorAll('.toggle-btn')[0].classList.add('active');
+    } else {
+        document.querySelectorAll('.toggle-btn')[1].classList.add('active');
+    }
+
+    // CAMBIAR PRECIOS
+    document.querySelectorAll('.precio').forEach(el => {
+        el.innerText = '$' + el.getAttribute('data-' + tipo);
+    });
+
+}
+function seleccionarPlan(boton, plan) {
+
+    // quitar selección anterior
+    document.querySelectorAll('.plan-card').forEach(card => {
+        card.classList.remove('popular');
+    });
+
+    // seleccionar nueva tarjeta
+    boton.closest('.plan-card').classList.add('popular');
+
+    // redireccionar al pago
+    window.location.href = '/checkout/' + plan;
+}
+
+// =========================================
+// 🔥 CERRAR BANNER
+// =========================================
+
+function cerrarBanner()
+{
+    const banner =
+        document.querySelector('.trial-banner');
+
+    banner.style.display = 'none';
+}
 
 </script>
 

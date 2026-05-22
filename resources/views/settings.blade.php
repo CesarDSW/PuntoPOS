@@ -382,51 +382,95 @@
                 @endif
                 </script>
 
-            @elseif(request('tab') == 'pagos')
-                <div class="settings-card">
-                    <h2>💳Métodos de pago</h2>
+         @elseif(request('tab') == 'pagos')
 
-                    @php
-                        $paymentMethods = $company->payment_methods
-                            ? json_decode($company->payment_methods, true)
-                            : [];
-                    @endphp
-                    
-                    <form method="POST" action="{{ route('settings.update') }}">
-                        @csrf
-                        <input type="hidden" name="tab_section" value="pagos">
+    <div class="settings-card">
 
-                         <div class="form-group">
-                            <label>Selecciona un método de pago</label>
-                   
-                            <div class="payment-grid">
-                                <label class="payment-option">
-                                  <input type="checkbox" name="payment_methods[]" value="Efectivo" {{ in_array('Efectivo', $paymentMethods) ? 'checked' : '' }}>
-                                  <div class="payment-content">
-                                      💵 <span>Efectivo</span>
-                            </div>
-                                </label>
+        <h2>💳Métodos de pago</h2>
 
-                                <label class="payment-option">
-                                    <input type="checkbox" name="payment_methods[]" value="Tarjeta" {{ in_array('Tarjeta', $paymentMethods) ? 'checked' : '' }}>
-                                    <span>💳Tarjeta</span>
-                                </label>
+        @php
+            $paymentMethods = $company->payment_methods
+                ? json_decode($company->payment_methods, true)
+                : [];
+        @endphp
 
-                                <label class="payment-option">
-                                    <input type="checkbox" name="payment_methods[]" value="Transferencia" {{ in_array('Transferencia', $paymentMethods) ? 'checked' : '' }}>
-                                    <span>🔁Transferencia</span>
-                                </label>
+        <form method="POST" action="{{ route('settings.update') }}">
 
-                                <label class="payment-option">
-                                    <input type="checkbox" name="payment_methods[]" value="Cheque" {{ in_array('Cheque', $paymentMethods) ? 'checked' : '' }}>
-                                    <span>🧾Cheque</span>
-                                </label>
-                            </div>
+            @csrf
+
+            <input type="hidden" name="tab_section" value="pagos">
+
+            <div class="form-group">
+
+                <label>Selecciona un método de pago</label>
+
+                <div class="payment-grid">
+
+                    <label class="payment-option">
+
+                        <input
+                            type="checkbox"
+                            name="payment_methods[]"
+                            value="Efectivo"
+                            {{ in_array('Efectivo', $paymentMethods) ? 'checked' : '' }}
+                        >
+
+                        <div class="payment-content">
+                            💵 <span>Efectivo</span>
                         </div>
-                        
-                        <button type="submit" class="btn-save">Guardar cambios</button>
-                    </form>
+
+                    </label>
+
+                    <label class="payment-option">
+
+                        <input
+                            type="checkbox"
+                            name="payment_methods[]"
+                            value="Tarjeta"
+                            {{ in_array('Tarjeta', $paymentMethods) ? 'checked' : '' }}
+                        >
+
+                        <span>💳Tarjeta</span>
+
+                    </label>
+
+                    <label class="payment-option">
+
+                        <input
+                            type="checkbox"
+                            name="payment_methods[]"
+                            value="Transferencia"
+                            {{ in_array('Transferencia', $paymentMethods) ? 'checked' : '' }}
+                        >
+
+                        <span>🔁Transferencia</span>
+
+                    </label>
+
+                    <label class="payment-option">
+
+                        <input
+                            type="checkbox"
+                            name="payment_methods[]"
+                            value="Cheque"
+                            {{ in_array('Cheque', $paymentMethods) ? 'checked' : '' }}
+                        >
+
+                        <span>🧾Cheque</span>
+
+                    </label>
+
                 </div>
+
+            </div>
+
+            <button type="submit" class="btn-save">
+                Guardar cambios
+            </button>
+
+        </form>
+
+    
     
             @elseif(request('tab') == 'notificaciones')
                 <div class="settings-card">

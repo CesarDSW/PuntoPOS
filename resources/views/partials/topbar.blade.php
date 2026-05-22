@@ -23,12 +23,12 @@
 
         <div class="user-box">
             <div class="user-info">
-                <div class="user-name">{{ auth()->user()->name_user }}</div>
+                <div class="user-name">{{ strtoupper(substr(optional(auth()->user())->name_user ?? 'U', 0, 1)) }}</div>
                 <div class="user-role">Administrador</div>
             </div>
 
             <div class="avatar">
-                {{ strtoupper(substr(auth()->user()->name_user, 0, 1)) }}
+                {{ strtoupper(substr(optional(auth()->user())->name_user ?? 'U', 0, 1)) }}
             </div>
 
             <form action="{{ route('logout') }}" method="POST">

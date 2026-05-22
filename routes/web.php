@@ -7,12 +7,19 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Facades\Route;
 use App\Models\User;
 
+
+use App\Http\Controllers\StripeController;
+
+
+
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\FacturaController;
+
 
 ///daniel
 use App\Http\Controllers\Api\BranchContextController;
@@ -120,9 +127,15 @@ Route::middleware('guest')->group(function(){
 | Rutas protegidas
 |-----------------------------------------------------------------------
 */
-Route::middleware('auth')->group(function () {
+Route::middleware([
+    'auth',
+    'subscription'
+])->group(function () {
     //Cerrar sesion
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::get('/suscripcion', [StripeController::class, 'verSuscripcion']);
+    Route::post('/crear-suscripcion', [StripeController::class, 'crearSuscripcion']);
+
 
     //Dashboard
         // Ruta para el dashboard, solo accesible para usuarios autenticados
@@ -281,8 +294,51 @@ Route::middleware('auth')->group(function () {
 
         
     
+});/*ruta que se agrego*/
+Route::get('/factura/{id}', [FacturaController::class, 'generar'])->name('factura.generar');
 });
 
+Route::get('/suscripciones', function () {
+    return view('subscriptions.index');
+})->name('suscripciones');
 
-});
+Route::get('/checkout/{plan}', [StripeController::class, 'checkout']);
+Route::get('/portal-cliente', [StripeController::class, 'portalCliente'])
+    ->name('portal.cliente');
 
+
+// =========================================
+// 🔥 SUSCRIPCIONES
+// =========================================
+
+Route::get(
+
+    '/suscripcion',
+
+    [StripeController::class, 'verSuscripcion']
+
+)->name('suscripcion');
+
+Route::get(
+
+    '/checkout/{plan}',
+
+    [StripeController::class, 'checkout']
+
+)->name('checkout');
+
+Route::post(
+
+    '/crear-suscripcion',
+
+    [StripeController::class, 'crearSuscripcion']
+
+)->name('crear.suscripcion');
+
+Route::get(
+
+    '/portal-cliente',
+
+    [StripeController::class, 'portalCliente']
+
+)->name('portal.cliente');

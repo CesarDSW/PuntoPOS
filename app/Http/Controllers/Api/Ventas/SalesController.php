@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Throwable;
+use App\Models\Payment;
 
 class SalesController extends SalesBaseController
 {
@@ -507,10 +508,34 @@ class SalesController extends SalesBaseController
             ], 422);
      
             }
-            Sale::create([
+           
+            
+
+$venta = Sale::create([
     'total' => $total,
     'payment_method' => $request->payment_method,
 ]);
+
+// Crear pago
+$pago = Payment::create([
+    'sale_idfk' => $venta->sale_id,
+    'status_payment' => 'pending',
+    'attempts' => 0,
+    'amount_paid' => $venta->total,
+]);
+
+// Simular si el pago fue exitoso o falló
+if(rand(0,1)){
+    $pago->status_payment = 'success';
+} else {
+    $pago->status_payment = 'failed';
+}
+
+// 👇 AQUÍ ES TU CÓDIGO
+$pago->attempts = $pago->attempts + 1;
+
+// Guardar cambios
+$pago->save();
     }
     
 }
