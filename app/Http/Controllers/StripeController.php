@@ -9,10 +9,6 @@ use Illuminate\Support\Facades\Log;
 
 class StripeController extends Controller
 {
-    // =========================================
-    // 🔥 CREAR SUSCRIPCIÓN
-    // =========================================
-
     public function crearSuscripcion(Request $request)
     {
         try {
@@ -22,10 +18,6 @@ class StripeController extends Controller
             );
 
             $paymentMethod = $request->payment_method;
-
-            // =========================================
-            // 🔥 VALIDAR PAYMENT METHOD
-            // =========================================
 
             if (!$paymentMethod) {
 
@@ -37,10 +29,6 @@ class StripeController extends Controller
                 ], 400);
 
             }
-
-            // =========================================
-            // 🔥 USUARIO
-            // =========================================
 
             $user = auth()->user();
 
@@ -70,37 +58,21 @@ class StripeController extends Controller
 
             }
 
-            // =========================================
-            // 🔥 CREAR CUSTOMER STRIPE
-            // =========================================
-
             $customer = \Stripe\Customer::create([
 
                 'email' => $email,
 
             ]);
 
-            // =========================================
-            // 🔥 PAYMENT METHOD
-            // =========================================
-
             $pm = \Stripe\PaymentMethod::retrieve(
                 $paymentMethod
             );
-
-            // =========================================
-            // 🔥 ADJUNTAR TARJETA
-            // =========================================
 
             $pm->attach([
 
                 'customer' => $customer->id,
 
             ]);
-
-            // =========================================
-            // 🔥 MÉTODO DEFAULT
-            // =========================================
 
             \Stripe\Customer::update(
 
@@ -119,21 +91,9 @@ class StripeController extends Controller
 
             );
 
-            // =========================================
-            // 🔥 PLAN SELECCIONADO
-            // =========================================
-
             $plan = $request->plan;
 
-            // =========================================
-            // 🔥 PRICE IDS STRIPE
-            // =========================================
-
             $precios = [
-
-                // =========================================
-                // 🔥 BÁSICO
-                // =========================================
 
                 'basico_mensual' =>
                     'price_1TZZSVBABidtfriTVCFVLawm',
@@ -141,19 +101,11 @@ class StripeController extends Controller
                 'basico_anual' =>
                     'price_1TZZXxBABidtfriT7IaIxKwjL',
 
-                // =========================================
-                // 🔥 PRO
-                // =========================================
-
                 'pro_mensual' =>
                     'price_1TZZZ6BABidtfriTdZ7IJqBL',
 
                 'pro_anual' =>
                     'price_1TZZZsBABidtfriTiX6qBGdi',
-
-                // =========================================
-                // 🔥 NEGOCIO
-                // =========================================
 
                 'negocio_mensual' =>
                     'price_1TZZagBABidtfriT24ZRh9eI',
@@ -162,10 +114,6 @@ class StripeController extends Controller
                     'price_1TZZbHBABidtfriTQVk37YUM',
 
             ];
-
-            // =========================================
-            // 🔥 VALIDAR PLAN
-            // =========================================
 
             if (!isset($precios[$plan])) {
 
@@ -177,15 +125,7 @@ class StripeController extends Controller
 
             }
 
-            // =========================================
-            // 🔥 PRICE ID
-            // =========================================
-
             $priceId = $precios[$plan];
-
-            // =========================================
-            // 🔥 CREAR SUSCRIPCIÓN STRIPE
-            // =========================================
 
             $subscriptionStripe =
                 \Stripe\Subscription::create([
@@ -204,10 +144,6 @@ class StripeController extends Controller
 
                 ]);
 
-            // =========================================
-            // 🔥 BUSCAR SUSCRIPCIÓN EXISTENTE
-            // =========================================
-
             $subscriptionLocal =
                 Subscription::where(
 
@@ -221,15 +157,7 @@ class StripeController extends Controller
                 )
                 ->first();
 
-            // =========================================
-            // 🔥 ACTUALIZAR SUSCRIPCIÓN
-            // =========================================
-
             if ($subscriptionLocal) {
-
-                // =========================================
-                // 🔥 CANCELAR OTRAS
-                // =========================================
 
                 Subscription::where(
                     'user_idfk',
@@ -245,10 +173,6 @@ class StripeController extends Controller
                     'status' => 'cancelada'
 
                 ]);
-
-                // =========================================
-                // 🔥 ACTUALIZAR ACTUAL
-                // =========================================
 
                 $subscriptionLocal->update([
 
@@ -269,10 +193,6 @@ class StripeController extends Controller
                 ]);
 
             } else {
-
-                // =========================================
-                // 🔥 CREAR NUEVA
-                // =========================================
 
                 Subscription::create([
 
@@ -300,10 +220,6 @@ class StripeController extends Controller
 
             }
 
-            // =========================================
-            // 🔥 RESPUESTA
-            // =========================================
-
             return response()->json([
 
                 'success' => true
@@ -325,10 +241,6 @@ class StripeController extends Controller
         }
     }
 
-    // =========================================
-    // 🔥 MOSTRAR SUSCRIPCIÓN
-    // =========================================
-
     public function verSuscripcion()
     {
         $user = auth()->user();
@@ -339,10 +251,6 @@ class StripeController extends Controller
 
         }
 
-        // =========================================
-        // 🔥 SUSCRIPCIÓN
-        // =========================================
-
         $subscription = Subscription::where(
 
             'user_idfk',
@@ -351,10 +259,6 @@ class StripeController extends Controller
         )
         ->where('status', 'activa')
         ->first();
-
-        // =========================================
-        // 🔥 DÍAS RESTANTES
-        // =========================================
 
         $diasRestantes = 0;
 
@@ -371,10 +275,6 @@ class StripeController extends Controller
 
         }
 
-        // =========================================
-        // 🔥 VIEW
-        // =========================================
-
         return view(
 
             'suscripcion',
@@ -389,10 +289,6 @@ class StripeController extends Controller
 
         );
     }
-
-    // =========================================
-    // 🔥 PORTAL CLIENTE STRIPE
-    // =========================================
 
     public function portalCliente()
     {
@@ -415,10 +311,6 @@ class StripeController extends Controller
 
             }
 
-            // =========================================
-            // 🔥 SUSCRIPCIÓN ACTIVA
-            // =========================================
-
             $subscription = Subscription::where(
 
                 'user_idfk',
@@ -439,10 +331,6 @@ class StripeController extends Controller
 
             }
 
-            // =========================================
-            // 🔥 CREAR PORTAL STRIPE
-            // =========================================
-
             $session =
                 \Stripe\BillingPortal\Session::create([
 
@@ -453,10 +341,6 @@ class StripeController extends Controller
                         route('dashboard'),
 
                 ]);
-
-            // =========================================
-            // 🔥 REDIRIGIR
-            // =========================================
 
             return redirect($session->url);
 
@@ -475,10 +359,6 @@ class StripeController extends Controller
 
         }
     }
-
-    // =========================================
-    // 🔥 CHECKOUT
-    // =========================================
 
     public function checkout($plan)
     {
@@ -517,10 +397,6 @@ class StripeController extends Controller
             ]
 
         ];
-
-        // =========================================
-        // 🔥 VALIDAR PLAN
-        // =========================================
 
         if (!isset($planes[$plan])) {
 

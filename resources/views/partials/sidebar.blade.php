@@ -8,8 +8,6 @@
         left:0px;
 
     ">
-
-
     ☰
 
 </button>
@@ -414,9 +412,7 @@ overlay.addEventListener('click', () => {
 
 });
 
-/* =========================
-   MODAL
-========================= */
+
 
 function abrirAyuda() {
 
@@ -430,9 +426,7 @@ function cerrarAyuda() {
 
 }
 
-/* =========================
-   FAQ
-========================= */
+
 
 function toggleFAQ(item) {
 
@@ -440,9 +434,7 @@ function toggleFAQ(item) {
 
 }
 
-/* =========================
-   SEARCH FAQ
-========================= */
+
 
 function buscarFAQ() {
 
@@ -466,9 +458,7 @@ function buscarFAQ() {
 
 }
 
-/* =========================
-   SOPORTE
-========================= */
+
 
 function mostrarSoporte(){
 
@@ -490,9 +480,7 @@ function volverAyuda(){
 
 }
 
-/* =========================
-   CLICK FUERA MODAL
-========================= */
+
 
 window.onclick = function(e) {
 

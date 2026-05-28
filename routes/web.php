@@ -349,3 +349,12 @@ Route::post(
     '/support-ticket',
     [SupportController::class, 'ticket']
 )->name('support.ticket');
+
+Route::get(
+    '/support',
+    [SupportController::class, 'index']
+)->name('support.index');
+Route::post(
+    '/support/{id}/completar',
+    [SupportController::class, 'completar']
+)->name('support.completar');

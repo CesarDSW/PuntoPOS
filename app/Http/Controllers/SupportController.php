@@ -8,6 +8,8 @@ use App\Models\SupportTicket;
 class SupportController extends Controller
 {
 
+    /* GUARDAR TICKET */
+
     public function ticket(Request $request)
     {
 
@@ -39,6 +41,38 @@ class SupportController extends Controller
             'Mensaje enviado correctamente'
 
         );
+
+    }
+
+    /* LISTAR TICKETS */
+      
+    public function index()
+    {
+  
+         
+        $tickets = SupportTicket::latest()->get();
+
+        return view(
+
+            'support.index',
+            compact('tickets')
+
+        );
+
+    }
+
+    /* MARCAR COMO ATENDIDO */
+
+    public function completar($id)
+    {
+
+        $ticket = SupportTicket::findOrFail($id);
+
+        $ticket->status = 'atendido';
+
+        $ticket->save();
+
+        return back();
 
     }
 
