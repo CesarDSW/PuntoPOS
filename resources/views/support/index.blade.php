@@ -4,171 +4,293 @@
 
 <style>
 
-/* =========================
-   SUPPORT PAGE
-========================= */
-
 .support-page{
-
     padding:30px;
-
 }
 
-/* HEADER */
-
 .support-top{
-
     margin-bottom:25px;
-
 }
 
 .support-top h1{
-
     font-size:36px;
-
     font-weight:700;
-
     color:#111827;
-
     margin-bottom:8px;
-
 }
 
 .support-top p{
-
     color:#6b7280;
-
     font-size:15px;
-
 }
 
-/* CARD */
+/* STATS */
 
-.support-table{
+.support-stats{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:20px;
+    margin-bottom:25px;
+}
 
+.stat-card{
     background:#fff;
-
-    border-radius:20px;
-
     padding:20px;
-
+    border-radius:20px;
     box-shadow:0 10px 30px rgba(0,0,0,.05);
+}
 
-    overflow-x:auto;
+.stat-card h3{
+    font-size:32px;
+    color:#2563eb;
+    margin:0;
+}
 
+.stat-card p{
+    color:#64748b;
+    margin-top:5px;
+}
+
+/* SEARCH */
+
+.search-box{
+    margin-bottom:20px;
+}
+
+.search-box input{
+    width:100%;
+    padding:12px 15px;
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    outline:none;
 }
 
 /* TABLE */
 
-.support-table table{
-
-    width:100%;
-
-    border-collapse:collapse;
-
+.support-table{
+    background:#fff;
+    border-radius:20px;
+    padding:20px;
+    box-shadow:0 10px 30px rgba(0,0,0,.05);
 }
 
-/* HEAD */
+.table-scroll{
+    max-height:600px;
+    overflow-y:auto;
+}
+
+.support-table table{
+    width:100%;
+    border-collapse:collapse;
+}
 
 .support-table thead{
-
     background:#f8fafc;
-
 }
 
 .support-table th{
-
     padding:16px;
-
     text-align:left;
-
     font-size:14px;
-
     color:#475569;
-
     font-weight:600;
-
 }
-
-/* BODY */
 
 .support-table td{
-
     padding:16px;
-
     border-bottom:1px solid #f1f5f9;
-
     color:#111827;
-
     font-size:14px;
-
 }
 
-/* HOVER */
-
 .support-table tbody tr:hover{
-
     background:#f8fafc;
+}
 
+/* USER */
+
+.user-ticket{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.avatar{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    background:#2563eb;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
 }
 
 /* STATUS */
 
 .status{
-
-    background:#dbeafe;
-
-    color:#2563eb;
-
-    padding:6px 12px;
-
+    background:#fef3c7;
+    color:#92400e;
+    padding:8px 12px;
     border-radius:999px;
-
     font-size:12px;
-
     font-weight:600;
+}
 
-    display:inline-block;
+.done{
+    background:#dcfce7;
+    color:#166534;
+    padding:8px 12px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:600;
+}
+
+/* BUTTON */
+
+.btn-completar{
+    background:#10b981;
+    color:white;
+    border:none;
+    padding:10px 14px;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:13px;
+    font-weight:600;
+    transition:.2s;
+}
+
+.btn-completar:hover{
+    background:#059669;
+}
+
+/* DROPDOWN */
+
+.dropdown{
+position:relative;
+}
+
+.dropdown-btn{
+border:none;
+background:none;
+font-size:22px;
+cursor:pointer;
+color:#64748b;
+font-weight:bold;
+}
+
+.dropdown-menu{
+position:absolute;
+right:0;
+top:35px;
+background:#fff;
+min-width:180px;
+border-radius:12px;
+box-shadow:0 10px 25px rgba(0,0,0,.12);
+display:none;
+z-index:100;
+}
+
+.dropdown.active .dropdown-menu{
+display:block;
+}
+
+
+.dropdown-menu a,
+.dropdown-menu button{
+width:100%;
+display:block;
+text-align:left;
+padding:12px 15px;
+border:none;
+background:none;
+cursor:pointer;
+text-decoration:none;
+color:#111827;
+font-size:14px;
+}
+
+.dropdown-menu a:hover,
+.dropdown-menu button:hover
+
+.table-scroll{
+    max-height:600px;
+    overflow-y:auto;
+}
+
+.support-table{
+    overflow:visible;
+}
+
+.table-scroll{
+    overflow-x:auto;
+    overflow-y:visible;
+}
+
+.custom-pagination{
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    gap:8px;
+
+    margin-top:25px;
 
 }
 
-/* BTN */
+.page-btn{
 
-.btn-completar{
+    min-width:40px;
+
+    height:40px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    background:#fff;
+
+    border:1px solid #e5e7eb;
+
+    border-radius:10px;
+
+    text-decoration:none;
+
+    color:#111827;
+
+    font-weight:600;
+
+}
+
+.page-btn:hover{
 
     background:#2563eb;
 
     color:white;
 
-    border:none;
+}
 
-    padding:10px 14px;
+.page-btn.active{
 
-    border-radius:10px;
+    background:#2563eb;
 
-    cursor:pointer;
+    color:white;
 
-    font-size:13px;
-
-    font-weight:600;
-
-    transition:.2s;
+    border-color:#2563eb;
 
 }
 
-.btn-completar:hover{
+.page-btn.disabled{
 
-    background:#1d4ed8;
+    opacity:.4;
 
-}
-
-/* DONE */
-
-.done{
-
-    color:#16a34a;
-
-    font-weight:700;
+    pointer-events:none;
 
 }
 
@@ -177,21 +299,15 @@
 @media(max-width:768px){
 
     .support-page{
-
         padding:15px;
-
     }
 
     .support-top h1{
-
         font-size:28px;
-
     }
 
-    .support-table{
-
-        padding:12px;
-
+    .support-stats{
+        grid-template-columns:1fr;
     }
 
 }
@@ -200,21 +316,81 @@
 
 <div class="support-page">
 
-    <!-- HEADER -->
-    <div class="support-top">
 
-        <h1>
-            Tickets de soporte
-        </h1>
+<div class="support-top">
 
-        <p>
-            Administra las dudas y problemas enviados por los usuarios
-        </p>
+    <h1>🎫 Tickets de soporte</h1>
 
+    <p>
+        Administra las dudas y problemas enviados por los usuarios
+    </p>
+
+</div>
+
+<div class="support-stats">
+
+    <div class="stat-card">
+        <h3>{{ $totalTickets }}</h3>
+        <p>Total tickets</p>
     </div>
 
-    <!-- TABLE -->
-    <div class="support-table">
+    <div class="stat-card">
+        <h3>{{ $totalPendientes }}</h3>
+        <p>Pendientes</p>
+    </div>
+
+    <div class="stat-card">
+        <h3>{{ $totalAtendidos }}</h3>
+        <p>Atendidos</p>
+    </div>
+
+</div>
+
+<div class="support-table">
+
+<form method="GET" class="filters">
+
+    <input
+        type="text"
+        name="search"
+        placeholder="🔍 Buscar asunto o mensaje..."
+        value="{{ request('search') }}">
+
+    <select name="status">
+
+        <option value="">
+            Todos los estados
+        </option>
+
+        <option
+            value="pendiente"
+            {{ request('status') == 'pendiente' ? 'selected' : '' }}>
+
+            Pendientes
+
+        </option>
+
+        <option
+            value="atendido"
+            {{ request('status') == 'atendido' ? 'selected' : '' }}>
+
+            Atendidos
+
+        </option>
+
+    </select>
+
+    <button type="submit">
+
+        Buscar
+
+    </button>
+
+</form>
+
+
+
+    <div class="table-scroll">
 
         <table>
 
@@ -223,15 +399,11 @@
                 <tr>
 
                     <th>Usuario</th>
-
+                    <th>Sucursal</th>
                     <th>Asunto</th>
-
                     <th>Mensaje</th>
-
                     <th>Estado</th>
-
                     <th>Fecha</th>
-
                     <th>Acción</th>
 
                 </tr>
@@ -239,89 +411,249 @@
             </thead>
 
             <tbody>
+                
 
-                @forelse($tickets as $ticket)
 
-                    <tr>
+@forelse($tickets as $ticket)
 
-                        <td>
-                            {{ $ticket->user_id }}
-                        </td>
+<tr>
 
-                        <td>
-                            {{ $ticket->subject }}
-                        </td>
+    <td>
 
-                        <td>
-                            {{ $ticket->message }}
-                        </td>
+        <div class="user-ticket">
 
-                        <td>
+            <div class="avatar">
 
-                            <span class="status">
+                {{ strtoupper(substr($ticket->user->name_user ?? 'U',0,1)) }}
 
-                                {{ $ticket->status }}
+            </div>
 
-                            </span>
+            <div>
 
-                        </td>
+                {{ $ticket->user->name_user ?? 'Sin usuario' }}
 
-                        <td>
-                            {{ $ticket->created_at->format('d/m/Y') }}
-                        </td>
+            </div>
 
-                        <td>
+        </div>
 
-                            @if($ticket->status == 'pendiente')
+    </td>
 
-                                <form
-                                    method="POST"
-                                    action="{{ route('support.completar', $ticket->id) }}">
+    <td>
 
-                                    @csrf
+        {{ $ticket->branch->name_branch ?? 'Sin sucursal' }}
 
-                                    <button class="btn-completar">
+    </td>
 
-                                        Marcar atendido
+    <td>
 
-                                    </button>
+        {{ $ticket->subject }}
 
-                                </form>
+    </td>
 
-                            @else
+    <td>
 
-                                <span class="done">
+        {{ \Illuminate\Support\Str::limit($ticket->message,50) }}
 
-                                    ✔ Atendido
+    </td>
 
-                                </span>
+    <td>
 
-                            @endif
+        @if($ticket->status == 'pendiente')
 
-                        </td>
+            <span class="status">
 
-                    </tr>
+                Pendiente
 
-                @empty
+            </span>
 
-                    <tr>
+        @else
 
-                        <td colspan="6">
+            <span class="done">
 
-                            No hay tickets registrados
+                Atendido
 
-                        </td>
+            </span>
 
-                    </tr>
+        @endif
 
-                @endforelse
+    </td>
+
+    <td>
+
+        {{ $ticket->created_at->format('d/m/Y') }}
+
+    </td>
+
+
+
+
+    <td style="text-align:center;">
+
+        <div class="dropdown">
+
+            <button
+    type="button"
+    class="dropdown-btn"
+    onclick="toggleDropdown(this)">
+
+    ⋮
+
+</button>
+
+            <div class="dropdown-menu">
+
+                <a href="mailto:{{ $ticket->user->email ?? '#' }}">
+
+                    ✉ Enviar mensaje
+
+                </a>
+
+                @if($ticket->status == 'pendiente')
+
+                    <form
+                        method="POST"
+                        action="{{ route('support.completar', $ticket->id) }}">
+
+                        @csrf
+
+                        <button type="submit">
+
+                            ✔ Marcar atendido
+
+                        </button>
+
+                    </form>
+
+                @else
+
+                    <button
+                        type="button"
+                        disabled>
+
+                        ✔ Ya atendido
+
+                    </button>
+
+                @endif
+
+            </div>
+
+        </div>
+
+    </td>
+
+</tr>
+
+@empty
+
+<tr>
+
+    <td colspan="7">
+
+        No hay tickets registrados
+
+    </td>
+
+</tr>
+
+@endforelse
+
+
+
 
             </tbody>
 
         </table>
+       @if ($tickets->hasPages())
+
+<div class="custom-pagination">
+
+    @if ($tickets->onFirstPage())
+
+        <span class="page-btn disabled">←</span>
+
+    @else
+
+        <a
+            href="{{ $tickets->previousPageUrl() }}"
+            class="page-btn">
+
+            ←
+
+        </a>
+
+    @endif
+
+    @for ($i = 1; $i <= $tickets->lastPage(); $i++)
+
+        <a
+            href="{{ $tickets->url($i) }}"
+            class="page-btn {{ $tickets->currentPage() == $i ? 'active' : '' }}">
+
+            {{ $i }}
+
+        </a>
+
+    @endfor
+
+    @if ($tickets->hasMorePages())
+
+        <a
+            href="{{ $tickets->nextPageUrl() }}"
+            class="page-btn">
+
+            →
+
+        </a>
+
+    @else
+
+        <span class="page-btn disabled">→</span>
+
+    @endif
+
+</div>
+
+@endif
+</div>
 
     </div>
 
 </div>
+</div>
+
+<script>
+
+function toggleDropdown(button)
+{
+    let dropdown = button.closest('.dropdown');
+
+    document.querySelectorAll('.dropdown').forEach(item => {
+
+        if(item !== dropdown)
+        {
+            item.classList.remove('active');
+        }
+
+    });
+
+    dropdown.classList.toggle('active');
+}
+
+document.addEventListener('click', function(e){
+
+    if(!e.target.closest('.dropdown'))
+    {
+        document.querySelectorAll('.dropdown').forEach(item => {
+
+            item.classList.remove('active');
+
+        });
+    }
+
+});
+
+</script>
+
 
 @endsection
