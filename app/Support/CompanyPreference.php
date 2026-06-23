@@ -27,7 +27,6 @@ class CompanyPreference
                 'auto_print' => true,
                 'show_taxes' => true,
                 'printer_width' => '80mm',
-                'theme' => 'light',
                 'price_decimals' => '2',
             ]
         );
@@ -51,20 +50,6 @@ class CompanyPreference
     public static function timeFormat(?int $companyId): string 
     {
         return self::settings($companyId)?->time_format ?: 'H:i';
-    }
-
-    public static function theme(?int $companyId): string 
-    {
-        $settings = self::settings($companyId);
-        $value = strtolower((string) ($settings?->theme ?? 'light'));
-
-        return match ($value) {
-            'claro' => 'light',
-            'oscuro' => 'dark',
-            'auto' => 'auto',
-            'light', 'dark', 'auto' => $value,
-            default => 'light',
-        };
     }
 
     public static function decimals(?int $companyId): int 
@@ -135,7 +120,6 @@ class CompanyPreference
             'timezone' => self::timezone($companyId),
             'date_format' => self::dateFormat($companyId),
             'time_format' => self::timeFormat($companyId),
-            'theme' => self::theme($companyId),
             'price_decimals' => self::decimals($companyId),
             'currency' => self::currency($companyId),
         ];

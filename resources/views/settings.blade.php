@@ -76,22 +76,61 @@
                             @csrf
                             <input type="hidden" name="tab_section" value="perfil">
 
-                            <div class="form-group">
+                            <div class="form-group file-upload-group logo-upload-area">
                                 <label>Logo</label>
-                                <input type="file" name="logo" class="form-input">
+
+                                <label for="businessLogoInput" class="file-dropzone logo-dropzone">
+                                    <input 
+                                        type="file"
+                                        id="businessLogoInput"
+                                        name="logo"
+                                        accept="image/png,image/jpeg,image/jpg,image/webp"
+                                        class="file-input-hidden"
+                                    >
+
+                                    <span class="file-dropzone-icon">⇧</span>
+
+                                    <span class="file-dropzone-text">
+                                        <span class="file-dropzone-title">Haz clic para subir tu logo</span>
+                                        <span class="file-dropzone-help">PNG, JPG o WEBP hasta 2MB</span>
+                                    </span>
+                                </label>
+
+                                <div id="businessLogoSelectedPreview" class="logo-selected-preview" hidden>
+                                    <span class="logo-preview-label">Vista previa del archivo seleccionado</span>
+
+                                    <div class="logo-preview-frame">
+                                        <img
+                                            id="businessLogoPreviewImage"
+                                            src=""
+                                            alt="Vista previa del logo seleccionado"
+                                            class="logo-preview-img"
+                                        >
+                                    </div>
+
+                                    <p id="businessLogoFileName" class="file-selected-name">
+                                        Ningún archivo seleccionado
+                                    </p>
+                                </div>
                             </div>
 
                             @if(!empty($company->logo))
-                                <div class="form-group">
-                                    <label>Logo actual</label><br>
-                                    <img
-                                        src="{{ asset('storage/' . $company->logo) }}"
-                                        alt="Logo de la empresa"
-                                        style="max-width: 180px; border-radius: 12px; border: 1px solid #d1d5db; padding: 8px;"
-                                        onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
-                                    >
+                                <div class="form-group logo-current-block">
+                                    <label>Logo actual</label>
+
+                                    <div class="logo-current-frame">
+                                        <img
+                                            src="{{ asset('storage/' . $company->logo) }}"
+                                            alt="Logo de la empresa"
+                                            class="logo-current-img"
+                                            onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                                        >
+
+                                        <div class="logo-preview-fallback">
+                                            Logo no disponible
+                                        </div>
+                                    </div>
                                 </div>
-                                <div style="display:none;">Logo no disponible</div>
                             @endif
 
                             <div class="form-group">
@@ -244,6 +283,7 @@
                             </div>
                         </div>
                     </div>
+
                 @else
                     <div class="settings-card">
                         <h2>🏢 Perfil del negocio</h2>
@@ -606,183 +646,103 @@
                     </div>
                 </div>
 
-                <script>
-                    const currentUserId = {{ (int) $currentUserId }};
-                    const currentRoleName = @js($currentRoleName);
-                    const ownerUserId = {{ (int) $ownerUserId }};
-                    const branchesCount = {{ (int) $branches->count() }};
-
-                    function openUserModal() {
-                        document.getElementById('userModal').style.display = 'flex';
-                        toggleCreateBranchField();
-                    }
-
-                    function closeUserModal() {
-                        document.getElementById('userModal').style.display = 'none';
-                    }
-
-                    function openEditUserModal(id, name, phone, email, rolId, branchId, permissionStates = {}) {
-                        const isSelf = Number(currentUserId) === Number(id);
-                        const isTargetOwner = Number(ownerUserId) === Number(id);
-
-                        document.getElementById('edit_name_user').value = name;
-                        document.getElementById('edit_phone').value = phone;
-                        document.getElementById('edit_email').value = email;
-                        document.getElementById('editUserForm').action = '/configuracion/usuarios/' + id;
-
-                        const roleSelect = document.getElementById('edit_rol_idfk');
-                        const roleHidden = document.getElementById('edit_rol_idfk_hidden');
-                        const branchSelect = document.getElementById('edit_branch_idfk');
-                        const branchHidden = document.getElementById('edit_branch_idfk_hidden');
-
-                        if (roleSelect) roleSelect.value = rolId ?? '';
-                        if (roleHidden) roleHidden.value = rolId ?? '';
-
-                        if (branchSelect) branchSelect.value = branchId ?? '';
-                        if (branchHidden) branchHidden.value = branchId ?? '';
-
-                        document.querySelectorAll('.permission-state').forEach(function (select) {
-                            const code = select.dataset.code;
-                            const state = permissionStates?.[code] || 'inherit';
-                            select.value = state;
-                        });
-
-                        if ((isSelf && currentRoleName === 'GERENTE') || isTargetOwner) {
-                            if (roleSelect) roleSelect.disabled = true;
-                        } else {
-                            if (roleSelect) roleSelect.disabled = false;
-                        }
-
-                        toggleEditBranchField();
-                        document.getElementById('editUserModal').style.display = 'flex';
-                    }
-
-                    function closeEditUserModal() {
-                        document.getElementById('editUserModal').style.display = 'none';
-                    }
-
-                    function roleTextFromSelect(selectId) {
-                        const select = document.getElementById(selectId);
-                        if (!select) return '';
-
-                        return select.options[select.selectedIndex]?.text?.trim()?.toUpperCase() || '';
-                    }
-
-                    function toggleCreateBranchField() {
-                        const selectedText = roleTextFromSelect('create_rol_idfk');
-                        const branchGroup = document.getElementById('createBranchGroup');
-                        const branchHelp = document.getElementById('createBranchHelp');
-
-                        if (!branchGroup) return;
-
-                        const shouldShow = selectedText === 'CAJERO' || selectedText === 'GERENTE';
-                        branchGroup.style.display = shouldShow ? 'block' : 'none';
-
-                        if (!shouldShow) {
-                            const select = document.getElementById('create_branch_idfk');
-                            if (select) select.value = '';
-                            return;
-                        }
-
-                        if (branchHelp) {
-                            if (branchesCount === 0) {
-                                branchHelp.textContent = 'Todavía no hay sucursales registradas. Puedes crear el usuario y asignarle una después.';
-                            } else {
-                                branchHelp.textContent = 'La sucursal es opcional al crear. También puedes asignarla después desde Editar usuario.';
-                            }
-                        }
-                    }
-
-                    function toggleEditBranchField() {
-                        const selectedText = roleTextFromSelect('edit_rol_idfk');
-                        const branchGroup = document.getElementById('editBranchGroup');
-                        const branchHidden = document.getElementById('edit_branch_idfk_hidden');
-
-                        if (!branchGroup) return;
-
-                        const shouldShow = selectedText === 'CAJERO' || selectedText === 'GERENTE';
-                        branchGroup.style.display = shouldShow ? 'block' : 'none';
-
-                        if (!shouldShow && branchHidden) {
-                            branchHidden.value = '';
-                        }
-                    }
-
-                    document.addEventListener('DOMContentLoaded', function () {
-                        const createRole = document.getElementById('create_rol_idfk');
-                        const editRole = document.getElementById('edit_rol_idfk');
-                        const editRoleHidden = document.getElementById('edit_rol_idfk_hidden');
-                        const editBranch = document.getElementById('edit_branch_idfk');
-                        const editBranchHidden = document.getElementById('edit_branch_idfk_hidden');
-
-                        if (createRole) {
-                            createRole.addEventListener('change', toggleCreateBranchField);
-                            toggleCreateBranchField();
-                        }
-
-                        if (editRole) {
-                            editRole.addEventListener('change', function () {
-                                if (editRoleHidden) {
-                                    editRoleHidden.value = editRole.value;
-                                }
-                                toggleEditBranchField();
-                            });
-                        }
-
-                        if (editBranch) {
-                            editBranch.addEventListener('change', function () {
-                                if (editBranchHidden) {
-                                    editBranchHidden.value = editBranch.value;
-                                }
-                            });
-                        }
-
-                        toggleEditBranchField();
-                    });
-                </script>
-
             @elseif(request('tab') == 'pagos')
-                <div class="settings-card">
-                    <h2>💳 Métodos de pago</h2>
-                    <p>Selecciona los métodos de pago disponibles para tu negocio.</p>
+                <div class="settings-card payment-settings-card">
+                    <div class="payment-header">
+                        <div class="payment-header-icon">
+                            💳
+                        </div>
+                        
+                        <div>
+                            <h2>Métodos de pago</h2>
+                            <p>
+                                Selecciona los métodos de pago disponibles para tu negocio.
+                            </p>
+                        </div>
+                    </div>
 
                     @php
                         $paymentMethods = $company->payment_methods
                             ? json_decode($company->payment_methods, true)
                             : [];
+
+                        $paymentOptions = [
+                            [
+                                'value' => 'Efectivo',
+                                'title' => 'Efectivo',
+                                'description' => 'Pagos en efectivo en mostrador',
+                                'icon' => '$',
+                                'class' => 'cash',
+                            ],
+                            [
+                                'value' => 'Tarjeta',
+                                'title' => 'Tarjeta de crédito/débito',
+                                'description' => 'Terminal punto de venta',
+                                'icon' => '▭',
+                                'class' => 'card',
+                            ],
+                            [
+                                'value' => 'Transferencia',
+                                'title' => 'Transferencia bancaria',
+                                'description' => 'SPEI, CLABE interbancaria',
+                                'icon' => '▦',
+                                'class' => 'transfer',
+                            ],
+                            [
+                                'value' => 'Cheque',
+                                'title' => 'Vales de despensa',
+                                'description' => 'Vales electrónicos o impresos',
+                                'icon' => '▭',
+                                'class' => 'voucher',
+                            ],
+                        ];
                     @endphp
 
-                    <form method="POST" action="{{ route('settings.update') }}">
+                    <form method="POST" action="{{ route('settings.update') }}" class="payment-methods-form">
                         @csrf
+
                         <input type="hidden" name="tab_section" value="pagos">
 
-                        <div class="form-group">
-                            <label>Selecciona un método de pago</label>
+                        <div class="payment-methods-grid">
+                            @foreach($paymentOptions as $option)
+                                @php
+                                    $isChecked = in_array($option['value'], $paymentMethods);
+                                @endphp
 
-                            <div class="payment-grid">
-                                <label class="payment-option">
-                                    <input type="checkbox" name="payment_methods[]" value="Efectivo" {{ in_array('Efectivo', $paymentMethods) ? 'checked' : '' }}>
-                                    <span>💵 Efectivo</span>
-                                </label>
+                                <label class="payment-method-card {{ $isChecked ? 'selected' :  ''}}">
+                                    <input 
+                                        type="checkbox"
+                                        name="payment_methods[]"
+                                        value="{{ $option['value'] }}"
+                                        {{ $isChecked ? 'checked' : '' }}
+                                    >
 
-                                <label class="payment-option">
-                                    <input type="checkbox" name="payment_methods[]" value="Tarjeta" {{ in_array('Tarjeta', $paymentMethods) ? 'checked' : '' }}>
-                                    <span>💳 Tarjeta</span>
-                                </label>
+                                    <div class="payment-method-icon payment-method-icon-{{ $option['class'] }}">
+                                        {{ $option['icon'] }}
+                                    </div>
 
-                                <label class="payment-option">
-                                    <input type="checkbox" name="payment_methods[]" value="Transferencia" {{ in_array('Transferencia', $paymentMethods) ? 'checked' : '' }}>
-                                    <span>🔁 Transferencia</span>
-                                </label>
+                                    <div class="payment-method-info">
+                                        <strong>{{ $option['title'] }}</strong>
+                                        <span>{{ $option['description'] }}</span>
+                                    </div>
 
-                                <label class="payment-option">
-                                    <input type="checkbox" name="payment_methods[]" value="Cheque" {{ in_array('Cheque', $paymentMethods) ? 'checked' : '' }}>
-                                    <span>🧾 Cheque</span>
+                                    <div class="payment-method-check">
+                                        ✓
+                                    </div>
                                 </label>
-                            </div>
+                            @endforeach
                         </div>
 
-                        <button type="submit" class="btn-save">Guardar cambios</button>
+                        <div class="payment-note">
+                            <strong>Nota:</strong>
+                            Los métodos de pago activos estarán disponibles en el POS y al registrar nuevas ventas.
+                        </div>
+
+                        <div class="payment-actions">
+                            <button type="submit" class="btn-save payment-save-btn">
+                                Guardar cambios
+                            </button>
+                        </div>                          
                     </form>
                 </div>
 
@@ -808,24 +768,48 @@
 
                         <div class="settings-option-card">
                             <div>
-                                <h3>Venta cancelada</h3>
-                                <p>Recibir alerta cuando una venta sea cancelada.</p>
-                            </div>
-
-                            <label class="switch">
-                                <input type="checkbox" name="notify_sale_cancelled" {{ $settings->notify_sale_cancelled ? 'checked' : '' }}>
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-
-                        <div class="settings-option-card">
-                            <div>
                                 <h3>Producto agotado</h3>
                                 <p>Recibir alerta cuando un producto llegue a 0 en stock.</p>
                             </div>
 
                             <label class="switch">
                                 <input type="checkbox" name="notify_out_of_stock" {{ $settings->notify_out_of_stock ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="settings-option-card">
+                            <div>
+                                <h3>Venta pendiente</h3>
+                                <p>Recibir alerta cuando una venta quede pendiente.</p>
+                            </div>
+
+                            <label class="switch">
+                                <input type="checkbox" name="notify_sale_pending" {{ ($settings->notify_sale_pending ?? true) ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="settings-option-card">
+                            <div>
+                                <h3>Venta completada</h3>
+                                <p>Recibir alerta cuando una venta se realice correctamente.</p>
+                            </div>
+
+                            <label class="switch">
+                                <input type="checkbox" name="notify_sale_completed" {{ ($settings->notify_sale_completed ?? true) ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="settings-option-card">
+                            <div>
+                                <h3>Venta cancelada</h3>
+                                <p>Recibir alerta cuando una venta sea cancelada.</p>
+                            </div>
+
+                            <label class="switch">
+                                <input type="checkbox" name="notify_sale_cancelled" {{ $settings->notify_sale_cancelled ? 'checked' : '' }}>
                                 <span class="slider"></span>
                             </label>
                         </div>
@@ -946,22 +930,6 @@
                                     Verificación en dos pasos activada correctamente.
                                 </div>
                             @endif
-
-                            <div class="recovery-section">
-                                <h4>Códigos de recuperación</h4>
-                                <p>Guárdalos en un lugar seguro. Te servirán si pierdes acceso a tu teléfono.</p>
-
-                                <div class="recovery-codes-box">
-                                    @foreach(auth()->user()->recoveryCodes() as $code)
-                                        <div>{{ $code }}</div>
-                                    @endforeach
-                                </div>
-
-                                <form method="POST" action="/user/two-factor-recovery-codes" style="margin-top: 14px;">
-                                    @csrf
-                                    <button type="submit" class="btn-secondary">Regenerar códigos</button>
-                                </form>
-                            </div>
 
                             <form method="POST" action="/user/two-factor-authentication" style="margin-top: 18px;">
                                 @csrf
@@ -1103,23 +1071,27 @@
                             <div class="form-group">
                                 <label>Tema de la interfaz</label>
 
+                                @php
+                                    $currentUserTheme = old('theme', $userPreference->theme ?? 'light');
+                                @endphp
+
                                 <div class="theme-options">
-                                    <label class="theme-card {{ in_array($settings->theme, ['light', 'Claro'], true) ? 'selected' : '' }}">
-                                        <input type="radio" name="theme" value="light" {{ in_array($settings->theme, ['light', 'Claro'], true) ? 'checked' : '' }}>
+                                    <label class="theme-card {{ $currentUserTheme === 'light' ? 'selected' : '' }}">
+                                        <input type="radio" name="theme" value="light" {{ $currentUserTheme === 'light' ? 'checked' : '' }}>
                                         <div class="theme-content">
                                             <span>☀️ Claro</span>
                                         </div>
                                     </label>
 
-                                    <label class="theme-card {{ in_array($settings->theme, ['dark', 'Oscuro'], true) ? 'selected' : '' }}">
-                                        <input type="radio" name="theme" value="dark" {{ in_array($settings->theme, ['dark', 'Oscuro'], true) ? 'checked' : '' }}>
+                                    <label class="theme-card {{ $currentUserTheme === 'dark' ? 'selected' : '' }}">
+                                        <input type="radio" name="theme" value="dark" {{ $currentUserTheme === 'dark' ? 'checked' : '' }}>
                                         <div class="theme-content">
                                             <span>🌙 Oscuro</span>
                                         </div>
                                     </label>
 
-                                    <label class="theme-card {{ in_array($settings->theme, ['auto', 'Auto'], true) ? 'selected' : '' }}">
-                                        <input type="radio" name="theme" value="auto" {{ in_array($settings->theme, ['auto', 'Auto'], true) ? 'checked' : '' }}>
+                                    <label class="theme-card {{ $currentUserTheme === 'auto' ? 'selected' : '' }}">
+                                        <input type="radio" name="theme" value="auto" {{ $currentUserTheme === 'auto' ? 'checked' : '' }}>
                                         <div class="theme-content">
                                             <span>⚙️ Auto</span>
                                         </div>
@@ -1129,84 +1101,94 @@
                         </div>
                         
                         @php 
-                            $clientedigitalCompanyId = (int) ($company->company_id ?? 0);
-                            $clientedigitalBranchId = (int) (optional($assignedBranch)->branch_id ?? 0);
-                            $clientedigitalUserId = (int) ($currentUserId ?? 0);
+                            $clientedigitalCompanyId = (int) ($company->company_id ?? auth()->user()->company_idfk ?? 0);
+                            $clientedigitalUserId = (int) ($currentUserId ?? auth()->id() ?? auth()->user()->userr_id ?? 0);
+
+                            $sessionBranchId = (int) session('current_branch_id', 0);
+                            $assignedBranchId = (int) (optional($assignedBranch)->branch_id ?? 0);
+                            $userBranchId = (int) (auth()->user()->branch_idfk ?? 0);
+                            $firstBranchId = (int) (optional($branches->first())->branch_id ?? 0);
+
+                            $clientedigitalBranchId = $sessionBranchId;
+
+                            if ($clientedigitalBranchId <= 0) {
+                                $clientedigitalBranchId = $assignedBranchId;
+                            }
+
+                            if ($clientedigitalBranchId <= 0) {
+                                $clientedigitalBranchId = $userBranchId;
+                            }
+
+                            if ($clientedigitalBranchId <= 0 && isset($branches) && $branches->count() === 1) {
+                                $clientedigitalBranchId = $firstBranchId;
+                            }                        
                         @endphp
 
-                        <div class="inner-card" style="margin-top: 18px;" id="clientedigitalIntegrationCard">
-                            <h3>Integración con ClienteDigital</h3>
-                            <p>Conecta Punto con ClienteDigital para importar productos y ventas.</p>
+                        {{-- INTEGRACIÓN CON CLIENTEDIGITAL --}}
+                        <div class="settings-card cliente-digital-card">
+                            <div class="settings-card-header">
+                                <div>
+                                    <h3>Integración con ClienteDigital</h3>
+                                    <p>Conecta Punto con ClienteDigital para importar productos y ventas.</p>
+                                </div>
+                            </div>
 
-                            <div class="form-row" style="margin-top: 14px;">
+                            <div class="integration-grid">
                                 <div class="form-group">
-                                    <label>Código de vinculación</label>
-                                    <input 
+                                    <label for="clienteDigitalCode">Código de vinculación</label>
+                                    <input
                                         type="text"
-                                        id="clientedigitalIntegrationCode"
-                                        class="form-input"
-                                        placeholder="Ejemplo: CD-PUNTO-ABC123"
+                                        id="clienteDigitalCode"
+                                        class="form-control"
+                                        placeholder="CD-PUNTO-XXXXXX"
                                         autocomplete="off"
                                     >
                                 </div>
 
                                 <div class="form-group">
-                                    <label>Estado</label>
-                                    <input 
+                                    <label for="clienteDigitalStatus">Estado</label>
+                                    <input
                                         type="text"
-                                        id="clientedigitalIntegrationStatus"
-                                        class="form-input"
+                                        id="clienteDigitalStatus"
+                                        class="form-control"
                                         value="No conectado"
                                         readonly
                                     >
                                 </div>
-                            </div>
 
-                            <div class="form-row">
                                 <div class="form-group">
-                                    <label>URL de ClienteDigital</label>
-                                    <input 
+                                    <label for="clienteDigitalBaseUrl">URL de ClienteDigital</label>
+                                    <input
                                         type="text"
-                                        id="clientedigitalBaseUrl"
-                                        class="form-input"
-                                        value="http://localhost/clientedigital/index.php/apis"
+                                        id="clienteDigitalBaseUrl"
+                                        class="form-control"
+                                        value="https://clientedigital.com.mx/soportecd/index.php/apis"
+                                        autocomplete="off"
                                     >
                                 </div>
                             </div>
 
-                            <div class="preferences-actions" style="margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap;">
-                                <button
-                                    type="button"
-                                    class="btn-save"
-                                    id="btnConnectClienteDigital"
-                                >
+                            <div id="clienteDigitalMessage" class="integration-message" style="display:none;"></div>
+
+                            <div class="integration-actions">
+                                <button type="button" id="btnCanjearClienteDigital" class="btn-primary-integration">
                                     Canjear código
                                 </button>
 
-                                <button
-                                    type="button"
-                                    class="btn-secondary"
-                                    id="btnSyncClienteDigitalProducts"
-                                    disabled
-                                >
-                                    Sincronizar productos
-                                </button>
-                                
-                                <button
-                                    type="button"
-                                    class="btn-secondary"
-                                    id="btnSyncClienteDigitalSales"
-                                    disabled
-                                >
-                                    Sincronizar ventas
-                                </button>
+                                <div class="integration-buttons-row">
+                                    <button type="button" id="btnSyncClienteDigitalProducts" class="btn-secondary-integration" disabled>
+                                        Sincronizar productos
+                                    </button>
+
+                                    <button type="button" id="btnSyncClienteDigitalSales" class="btn-secondary-integration" disabled>
+                                        Sincronizar ventas
+                                    </button>
+                                </div>
                             </div>
 
-                            <div id="clientedigitalIntegrationMessage" style="margin-top: 12px;"></div>
-
-                            @if(!$clientedigitalBranchId)
-                                <div class="error-box" style="margin-top: 12px;">
-                                    Para importar productos con stock y ventas, este usuario debe tener una sucursal asignada.
+                            @if($clientedigitalBranchId <= 0)
+                                <div class="integration-warning">
+                                    Para importar productos con stock y ventas, se debe tener una sucursal seleccionada o asignada.
                                 </div>
                             @endif
                         </div>
@@ -1250,379 +1232,454 @@
                         <button type="submit" class="btn-secondary">Restablecer valores por defecto</button>
                     </form>
                 </div>
-
-                <script>
-                    document.addEventListener('DOMContentLoaded', function () {
-                        function syncSelectableCards(inputName, cardSelector) {
-                            const cards = document.querySelectorAll(cardSelector);
-
-                            cards.forEach((card) => {
-                                const input = card.querySelector(`input[name="${inputName}"]`);
-                                if (!input) return;
-
-                                if (input.checked) {
-                                    card.classList.add('selected');
-                                } else {
-                                    card.classList.remove('selected');
-                                }
-
-                                card.addEventListener('click', function () {
-                                    input.checked = true;
-
-                                    cards.forEach((otherCard) => {
-                                        otherCard.classList.remove('selected');
-                                    });
-
-                                    card.classList.add('selected');
-                                });
-
-                                input.addEventListener('change', function () {
-                                    cards.forEach((otherCard) => {
-                                        otherCard.classList.remove('selected');
-                                    });
-
-                                    if (input.checked) {
-                                        card.classList.add('selected');
-                                    }
-                                });
-                            });
-                        }
-
-                        syncSelectableCards('printer_width', '.printer-option');
-                        syncSelectableCards('theme', '.theme-card');
-
-                        const hiddenInput = document.getElementById('timezone');
-                        const textInput = document.getElementById('timezone_search');
-                        const dropdown = document.getElementById('timezone_dropdown');
-                        const toggle = document.getElementById('timezone_toggle');
-                        const options = Array.from(document.querySelectorAll('.timezone-option'));
-
-                        if (!hiddenInput || !textInput || !dropdown || !toggle || !options.length) {
-                            return;
-                        }
-
-                        function openDropdown() {
-                            dropdown.classList.add('show');
-                        }
-
-                        function closeDropdown() {
-                            dropdown.classList.remove('show');
-                        }
-
-                        function selectOption(button) {
-                            const value = button.dataset.value || '';
-                            const label = button.dataset.label || value;
-
-                            hiddenInput.value = value;
-                            textInput.value = label;
-
-                            options.forEach((options) => option.classList.remove('selected'));
-                            button.classList.add('selected');
-
-                            closeDropdown();
-                        }
-
-                        function filterOptions() {
-                            const search = textInput.value.trim().toLowerCase();
-
-                            let visibleCount = 0;
-
-                            options.forEach((option) => {
-                                const value = (option.dataset.value || '').toLowerCase();
-                                const label = (option.dataset.label || '').toLowerCase();
-                                const matches = search === '' value.includes(search) || label.includes(search);
-
-                                options.style.display = matches ? 'block' : 'none';
-
-                                if (matches) {
-                                    visibleCount++;
-                                }
-                            });
-
-                            if (visibleCount > 0) {
-                                openDropdown();
-                            } else {
-                                closeDropdown();
-                            }
-                        }
-
-                        function restoreSelectedLabel() {
-                            const selected = options.find((option) => option.dataset.value === hiddenInput.value);
-
-                            if (selected) {
-                                textInput.value = selected.dataset.label || selected.dataset.value || '';
-                                option.forEach((option) => option.classList.remove('selected'));
-                                selected.classList.add('selected');
-                            }
-                        }
-
-                        toggle.addEventListener('click', function () {
-                            if (dropdwon.classList.contains('show')) {
-                                closeDropdown();
-                            } else {
-                                filterOptions();
-                                openDropdown();
-                                textInput.focus();
-                            }
-                        });
-
-                        textInput.addEventListener('focus', function () {
-                            filterOptions();
-                            openDropdown();
-                        });
-
-                        textInput.addEventListener('input', filterOptions);
-
-                        textInput.addEventListener('blur', function () {
-                            setTimeout(() => {
-                               const typed = textInput.value.trim().toLowerCase();
-                               
-                               const exactMatch = options.find((option) => {
-                                    const value = (option.dataset.value || '').toLowerCase();
-                                    const label = (option.dataset.label || '').toLowerCase();
-
-                                    return value === typed || label === typed;
-                                });
-
-                                if (exactMatch) {
-                                    selectOption(exactMatch);
-                                } else {
-                                    restoreSelectedLabel();
-                                    closeDropdown();
-                                }
-                            }, 150);
-                        });
-
-                        document.addEventListener('click', function (event) {
-                            const inside = event.target.closest('.timezone-field');
-                            if (!inside) {
-                                closeDropdown();
-                            }
-                        });
-
-                        options.forEach((options) => {
-                            options.addEventListener('click', function  () {
-                                selectOption(option);
-                            });
-                        });
-
-                        restoreSelectedLabel();
-
-                        const clienteDigitalConfig = {
-                            companyId: {{ $clientedigitalCompanyId }},
-                            branchId: {{ $clientedigitalBranchId }},
-                            userId: {{ $clientedigitalUserId }},
-                            connectUrl: "{{ url('/api/integrations/clientedigital/connect') }}",
-                            listUrl: "{{ url('/api/integrations/clientedigital') }}"
-                        };
-
-                        let clienteDigitalIntegrationId = null;
-
-                        const cdCodeInput = document.getElementById('clientedigitalIntegrationCode');
-                        const cdBaseUrlInput = document.getElementById('clientedigitalBaseUrl');
-                        const cdStatusInput = document.getElementById('clientedigitalIntegrationStatus');
-                        const cdMessageBox = document.getElementById('clientedigitalIntegrationMessage');
-                        const cdConnectButton = document.getElementById('btnConnectClienteDigital');
-                        const cdSyncProductsButton = document.getElementById('btnSyncClienteDigitalProducts');
-                        const cdSyncSalesButton = document.getElementById('btnSyncClienteDigitalSales');
-
-                        function showClienteDigitalMessage(type, message) {
-                            if (!cdMessageBox) return;
-
-                            const background = type === 'success' ? '#dcfce7' : '#fee2e2';
-                            const color = type === 'success' ? '#166534' : '#991b1b';
-                            const border = type === 'success' ? '#86efac' : '#fecaca';
-
-                            cdMessageBox.innerHTML = `
-                                <div style="background: ${background}; color: ${color}; border: 1px solid ${border}; padding: 12px; border-radius: 12px;">
-                                    ${message}
-                                </div>
-                            `;
-                        }
-
-                        function setClienteDigitalConnected(integrationId) {
-                            clienteDigitalIntegrationId = integrationId;
-
-                            if (cdStatusInput) {
-                                cdStatusInput.value = integrationId
-                                    ? 'Conectado'
-                                    : 'No conectado';
-                            }
-
-                            if (cdSyncProductsButton) {
-                                cdSyncProductsButton.disabled = !integrationId;
-                            }
-
-                            if (cdSyncSalesButton) {
-                                cdSyncSalesButton.disabled = !integrationId;
-                            }
-                        }
-
-                        async function loadClienteDigitalIntegration() {
-                            if (!cdStatusInput) return;
-
-                            try {
-                                const response = await fetch(clienteDigitalConfig.listUrl, {
-                                    headers: {
-                                        'Accept': 'application/json'
-                                    }
-                                });
-
-                                const result = await response.json();
-
-                                if (!response.ok || !result.success) {
-                                    return;
-                                }
-
-                                const integrations = result.data || [];
-
-                                const activeIntegration = integrations.find((integration) => {
-                                    return integration.source_app === 'clientedigital'
-                                        && integration.status === 'active'
-                                        && Number(integration.company_idfk) === Number(clienteDigitalConfig.companyId);
-                                });
-
-                                if (activeIntegration) {
-                                    setClienteDigitalConnected(activeIntegration.id);
-
-                                    if (cdBaseUrlInput && activeIntegration.external_base_url) {
-                                        cdBaseUrlInput.value = activeIntegration.external_base_url;
-                                    }
-                                }
-                            } catch (error) {
-                                console.warn('No se pudo cargar la integración con ClienteDigital.', error);
-                            }
-                        }
-
-                        async function connectClienteDigital() {
-                            if (!clienteDigitalConfig.companyId || !clienteDigitalConfig.userId) {
-                                showClienteDigitalMessage('error', 'No se pudo identificar la empresa o el usuario actual.');
-                                return;
-                            }
-
-                            if (!clienteDigitalConfig.branchId) {
-                                showClienteDigitalMessage('error', 'Debes tener una sucursal asignada antes de conectar ClienteDigital.');
-                                return;
-                            }
-
-                            const code = cdCodeInput ? cdCodeInput.value.trim() : '';
-                            const baseUrl = cdBaseUrlInput ? cdBaseUrlInput.value.trim() : '';
-
-                            if (!code) {
-                                showClienteDigitalMessage('error', 'Escribe el código generado en ClienteDigital.');
-                                return;
-                            }
-
-                            if (!baseUrl) {
-                                showClienteDigitalMessage('error', 'La URL de ClienteDigital es obligatoria.');
-                                return;
-                            }
-
-                            cdConnectButton.disabled = true;
-                            cdConnectButton.textContent = 'Conectando...';
-
-                            try {
-                                const response = await fetch(clienteDigitalConfig.connectUrl, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'Accept': 'application/json'
-                                    },
-                                    body: JSON.stringify({
-                                        external_base_url: baseUrl,
-                                        integration_code: code,
-                                        company_idfk: clienteDigitalConfig.companyId,
-                                        branch_idfk: clienteDigitalConfig.branchId,
-                                        userr_idfk: clienteDigitalConfig.userId
-                                    })
-                                });
-
-                                const result = await response.json();
-
-                                if (!response.ok || !result.success) {
-                                    throw new Error(result.message || 'No se pudo conectar con ClienteDigital.');
-                                }
-
-                                const integrationId = result.data.integration.id;
-
-                                setClienteDigitalConnected(integrationId);
-
-                                showClienteDigitalMessage('success', 'Integración conectada correctamente.');
-                            } catch (error) {
-                                showClienteDigitalMessage('error', error.message);
-                            } finally {
-                                cdConnectButton.disabled = false;
-                                cdConnectButton.textContent = 'Canjear código';
-                            }
-                        }
-
-                        async function syncClienteDigital(type) {
-                            if (!clienteDigitalIntegrationId) {
-                                showClienteDigitalMessage('error', 'Primero conecta ClienteDigital.');
-                                return;
-                            }
-
-                            const isProducts = type === 'products';
-                            const button = isProducts ? cdSyncProductsButton : cdSyncSalesButton;
-                            const endpoint = isProducts ? 'sync-products' : 'sync-sales';
-
-                            button.disabled = true;
-                            button.textContent = isProducts ? 'Sincronizando productos...' : 'Sincronizando ventas...';
-
-                            try {
-                                const response = await fetch(`/api/integrations/clientedigital/${clienteDigitalIntegrationId}/${endpoint}`, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'Accept': 'application/json'
-                                    },
-                                    body: JSON.stringify({
-                                        limit: 100,
-                                        offset: 0
-                                    })
-                                });
-
-                                const result = await response.json();
-
-                                if (!response.ok || !result.success) {
-                                    throw new Error(result.message || 'No se pudo sincronizar.');
-                                }
-
-                                const summary = result.data.summary;
-
-                                showClienteDigitalMessage(
-                                    'success',
-                                    `Sincronización finalizada. Creados: ${summary.created}, actualizados: ${summary.updated}, omitidos: ${summary.skipped}, fallidos: ${summary.failed}.`
-                                );
-                            } catch (error) {
-                                showClienteDigitalMessage('error', error.message);
-                            } finally {
-                                button.disabled = false;
-                                button.textContent = isProducts ? 'Sincronizar productos' : 'Sincronizar ventas';
-                            }
-                        }
-
-                        if (cdConnectButton) {
-                            cdConnectButton.addEventListener('click', connectClienteDigital);
-                        }
-
-                        if (cdSyncProductsButton) {
-                            cdSyncProductsButton.addEventListener('click', function () {
-                                syncClienteDigital('products');
-                            });
-                        }
-
-                        if (cdSyncSalesButton) {
-                            cdSyncSalesButton.addEventListener('click', function () {
-                                syncClienteDigital('sales');
-                            });
-                        }
-
-                        loadClienteDigitalIntegration();
-                    });
-                </script>
             @endif
         </section>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        /*
+        |--------------------------------------------------------------------------
+        | Logo del negocio
+        |--------------------------------------------------------------------------
+        */
+        const businessLogoInput = document.getElementById('businessLogoInput');
+        const businessLogoFileName = document.getElementById('businessLogoFileName');
+        const businessLogoSelectedPreview = document.getElementById('businessLogoSelectedPreview');
+        const businessLogoPreviewImage = document.getElementById('businessLogoPreviewImage');
+
+        if (
+            businessLogoInput &&
+            businessLogoFileName &&
+            businessLogoSelectedPreview &&
+            businessLogoPreviewImage
+        ) {
+            let currentPreviewUrl = null;
+
+            businessLogoInput.addEventListener('change', function () {
+                if (currentPreviewUrl) {
+                    URL.revokeObjectURL(currentPreviewUrl);
+                    currentPreviewUrl = null;
+                }
+
+                if (businessLogoInput.files && businessLogoInput.files.length > 0) {
+                    const file = businessLogoInput.files[0];
+
+                    businessLogoFileName.textContent = file.name;
+                    businessLogoFileName.classList.add('has-file');
+
+                    currentPreviewUrl = URL.createObjectURL(file);
+
+                    businessLogoPreviewImage.src = currentPreviewUrl;
+                    businessLogoSelectedPreview.classList.add('show');
+                } else {
+                    businessLogoFileName.textContent = 'Ningún archivo seleccionado';
+                    businessLogoFileName.classList.remove('has-file');
+
+                    businessLogoPreviewImage.src = '';
+                    businessLogoSelectedPreview.classList.remove('show');
+                }
+            });
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Usuarios y roles
+        |--------------------------------------------------------------------------
+        */
+        window.currentUserId = {{ (int) $currentUserId }};
+        window.currentRoleName = @js($currentRoleName);
+        window.ownerUserId = {{ (int) $ownerUserId }};
+        window.branchesCount = {{ (int) $branches->count() }};
+
+        window.openUserModal = function () {
+            const modal = document.getElementById('userModal');
+
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+
+            if (typeof window.toggleCreateBranchField === 'function') {
+                window.toggleCreateBranchField();
+            }
+        };
+
+        window.closeUserModal = function () {
+            const modal = document.getElementById('userModal');
+
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        };
+
+        window.openEditUserModal = function (id, name, phone, email, rolId, branchId, permissionStates = {}) {
+            const isSelf = Number(window.currentUserId) === Number(id);
+            const isTargetOwner = Number(window.ownerUserId) === Number(id);
+
+            const form = document.getElementById('editUserForm');
+
+            if (form) {
+                form.action = '/configuracion/usuarios/' + id;
+            }
+
+            const nameInput = document.getElementById('edit_name_user');
+            const phoneInput = document.getElementById('edit_phone');
+            const emailInput = document.getElementById('edit_email');
+            const roleSelect = document.getElementById('edit_rol_idfk');
+            const branchSelect = document.getElementById('edit_branch_id');
+
+            if (nameInput) nameInput.value = name ?? '';
+            if (phoneInput) phoneInput.value = phone ?? '';
+            if (emailInput) emailInput.value = email ?? '';
+            if (roleSelect) roleSelect.value = rolId ?? '';
+            if (branchSelect) branchSelect.value = branchId ?? '';
+
+            if (roleSelect) {
+                roleSelect.disabled = isSelf || isTargetOwner;
+            }
+
+            document.querySelectorAll('.permission-state').forEach(function (select) {
+                const code = select.dataset.code;
+
+                select.value = permissionStates[code] ?? 'inherit';
+            });
+
+            const modal = document.getElementById('editUserModal');
+
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        };
+
+        window.closeEditUserModal = function () {
+            const modal = document.getElementById('editUserModal');
+
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        };
+
+        window.toggleCreateBranchField = function () {
+            const roleSelect = document.querySelector('[name="rol_idfk"]');
+            const branchGroup = document.getElementById('branchSelectGroup');
+
+            if (!roleSelect || !branchGroup) {
+                return;
+            }
+
+            const selectedText = roleSelect.options[roleSelect.selectedIndex]?.text?.toUpperCase() ?? '';
+
+            branchGroup.style.display =
+                selectedText.includes('CAJERO') || selectedText.includes('GERENTE')
+                    ? 'block'
+                    : 'none';
+        };
+
+        const createRoleSelect = document.querySelector('[name="rol_idfk"]');
+
+        if (createRoleSelect) {
+            createRoleSelect.addEventListener('change', window.toggleCreateBranchField);
+            window.toggleCreateBranchField();
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Tarjetas seleccionables de preferencias
+        |--------------------------------------------------------------------------
+        */
+        function syncSelectableCards(inputName, cardSelector) {
+            const cards = document.querySelectorAll(cardSelector);
+
+            cards.forEach(function (card) {
+                const input = card.querySelector(`input[name="${inputName}"]`);
+
+                if (!input) {
+                    return;
+                }
+
+                card.classList.toggle('selected', input.checked);
+
+                card.addEventListener('click', function () {
+                    input.checked = true;
+
+                    cards.forEach(function (otherCard) {
+                        otherCard.classList.remove('selected');
+                    });
+
+                    card.classList.add('selected');
+                });
+
+                input.addEventListener('change', function () {
+                    cards.forEach(function (otherCard) {
+                        const otherInput = otherCard.querySelector(`input[name="${inputName}"]`);
+
+                        otherCard.classList.toggle('selected', otherInput?.checked);
+                    });
+                });
+            });
+        }
+
+        syncSelectableCards('printer_width', '.printer-card');
+        syncSelectableCards('theme', '.theme-card');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Métodos de pago
+        |--------------------------------------------------------------------------
+        */
+        document.querySelectorAll('.payment-method-card input[type="checkbox"]').forEach(function (input) {
+            const card = input.closest('.payment-method-card');
+
+            if (card) {
+                card.classList.toggle('selected', input.checked);
+            }
+
+            input.addEventListener('change', function () {
+                const currentCard = this.closest('.payment-method-card');
+
+                if (currentCard) {
+                    currentCard.classList.toggle('selected', this.checked);
+                }
+            });
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | ClienteDigital
+        |--------------------------------------------------------------------------
+        */
+        const cdStatusBadge = document.getElementById('clienteDigitalStatus');
+        const cdCodeInput = document.getElementById('clienteDigitalCode');
+        const cdBaseUrlInput = document.getElementById('clienteDigitalBaseUrl');
+        const cdConnectButton = document.getElementById('btnCanjearClienteDigital');
+        const cdSyncProductsButton = document.getElementById('btnSyncClienteDigitalProducts');
+        const cdSyncSalesButton = document.getElementById('btnSyncClienteDigitalSales');
+        const cdMessageBox = document.getElementById('clienteDigitalMessage');
+
+        let clienteDigitalIntegrationId = null;
+
+        function csrfToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+        }
+
+        function showClienteDigitalMessage(type, message) {
+            if (!cdMessageBox) {
+                return;
+            }
+
+            cdMessageBox.className = 'integration-message ' + type;
+            cdMessageBox.textContent = message;
+            cdMessageBox.style.display = 'block';
+        }
+
+        async function readJsonResponse(response) {
+            const text = await response.text();
+
+            try {
+                return JSON.parse(text);
+            } catch (error) {
+                return {
+                    success: false,
+                    message: text || 'Respuesta inválida del servidor.',
+                };
+            }
+        }
+
+        async function loadClienteDigitalIntegration() {
+            if (!cdStatusBadge) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/integrations/clientedigital/status', {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                const result = await readJsonResponse(response);
+
+                if (!response.ok || !result.success || !result.data) {
+                    cdStatusBadge.value = 'No conectado';
+
+                    if (cdSyncProductsButton) cdSyncProductsButton.disabled = true;
+                    if (cdSyncSalesButton) cdSyncSalesButton.disabled = true;
+
+                    return;
+                }
+
+                clienteDigitalIntegrationId = result.data.integration_id ?? null;
+
+                if (result.data.status === 'active') {
+                    cdStatusBadge.value = 'Conectado';
+
+                    if (cdSyncProductsButton) cdSyncProductsButton.disabled = false;
+                    if (cdSyncSalesButton) cdSyncSalesButton.disabled = false;
+                } else {
+                    cdStatusBadge.value = 'No conectado';
+
+                    if (cdSyncProductsButton) cdSyncProductsButton.disabled = true;
+                    if (cdSyncSalesButton) cdSyncSalesButton.disabled = true;
+                }
+
+                if (cdBaseUrlInput && result.data.external_base_url) {
+                    cdBaseUrlInput.value = result.data.external_base_url;
+                }
+            } catch (error) {
+                console.error(error);
+
+                cdStatusBadge.value = 'No conectado';
+
+                if (cdSyncProductsButton) cdSyncProductsButton.disabled = true;
+                if (cdSyncSalesButton) cdSyncSalesButton.disabled = true;
+            }
+        }
+
+        async function connectClienteDigital() {
+            if (!cdConnectButton) {
+                return;
+            }
+
+            const code = cdCodeInput?.value?.trim();
+            const baseUrl = cdBaseUrlInput?.value?.trim();
+
+            if (!code || !baseUrl) {
+                showClienteDigitalMessage('error', 'Escribe el código de vinculación y la URL de ClienteDigital.');
+                return;
+            }
+
+            cdConnectButton.disabled = true;
+            cdConnectButton.textContent = 'Conectando...';
+
+            try {
+                const response = await fetch('/api/integrations/clientedigital/connect', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        base_url: baseUrl,
+                    }),
+                });
+
+                const result = await readJsonResponse(response);
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'No se pudo conectar con ClienteDigital.');
+                }
+
+                showClienteDigitalMessage('success', result.message || 'Conexión realizada correctamente.');
+
+                await loadClienteDigitalIntegration();
+            } catch (error) {
+                showClienteDigitalMessage('error', error.message);
+            } finally {
+                cdConnectButton.disabled = false;
+                cdConnectButton.textContent = 'Canjear código';
+            }
+        }
+
+        async function syncClienteDigital(type) {
+            if (!clienteDigitalIntegrationId) {
+                showClienteDigitalMessage('error', 'Primero conecta ClienteDigital.');
+                return;
+            }
+
+            const isProducts = type === 'products';
+            const button = isProducts ? cdSyncProductsButton : cdSyncSalesButton;
+            const endpoint = isProducts ? 'sync-products' : 'sync-sales';
+
+            if (!button) {
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = isProducts ? 'Sincronizando productos...' : 'Sincronizando ventas...';
+
+            try {
+                const response = await fetch(`/api/integrations/clientedigital/${clienteDigitalIntegrationId}/${endpoint}`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        limit: 100,
+                        offset: 0,
+                    }),
+                });
+
+                const result = await readJsonResponse(response);
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'No se pudo sincronizar.');
+                }
+
+                const summary = result.data && result.data.summary
+                    ? result.data.summary
+                    : null;
+
+                if (summary) {
+                    let message = `Sincronización finalizada. Creados: ${summary.created}, actualizados: ${summary.updated}, omitidos: ${summary.skipped}, fallidos: ${summary.failed}.`;
+
+                    if (summary.failed > 0 && Array.isArray(summary.items)) {
+                        const failedItems = summary.items
+                            .filter(item => item.action === 'failed')
+                            .slice(0, 3)
+                            .map(item => {
+                                return `Venta ${item.external_id ?? 'sin ID'}: ${item.message ?? 'Error desconocido'}`;
+                            });
+
+                        if (failedItems.length > 0) {
+                            message += ' Errores: ' + failedItems.join(' | ');
+                        }
+                    }
+
+                    showClienteDigitalMessage(
+                        summary.failed > 0 ? 'error' : 'success',
+                        message
+                    );
+                } else {
+                    showClienteDigitalMessage('success', result.message || 'Sincronización finalizada correctamente.');
+                }
+            } catch (error) {
+                console.error(error);
+                showClienteDigitalMessage('error', error.message);
+            } finally {
+                button.disabled = false;
+                button.textContent = isProducts ? 'Sincronizar productos' : 'Sincronizar ventas';
+            }
+        }
+
+        if (cdConnectButton) {
+            cdConnectButton.addEventListener('click', connectClienteDigital);
+        }
+
+        if (cdSyncProductsButton) {
+            cdSyncProductsButton.addEventListener('click', function () {
+                syncClienteDigital('products');
+            });
+        }
+
+        if (cdSyncSalesButton) {
+            cdSyncSalesButton.addEventListener('click', function () {
+                syncClienteDigital('sales');
+            });
+        }
+
+        loadClienteDigitalIntegration();
+    });
+</script>
 @endsection

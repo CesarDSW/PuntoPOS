@@ -93,6 +93,14 @@
         return window.appFormat.money(value);
     }
 
+    function formatPaymentMethod(method) {
+        if (!method) {
+            return '-';
+        }
+
+        return String(method).split('·')[0].trim();
+    }
+
     async function apiFetch(url, options = {}) {
         try {
             const response = await fetch(url, {
@@ -149,8 +157,13 @@
         params.append('per_page', '50');
         params.append('status', filters.status);
 
-        if (filters.search) params.append('search', filters.search);
-        if (filters.date) params.append('date', filters.date);
+        if (filters.search) {
+            params.append('search', filters.search);
+        }
+
+        if (filters.date) {
+            params.append('date', filters.date);
+        }
 
         return params.toString();
     }
@@ -158,7 +171,9 @@
     async function loadSummary() {
         const { response, data } = await apiFetch('/api/payments/summary');
 
-        if (!response.ok) return;
+        if (!response.ok) {
+            return;
+        }
 
         document.getElementById('sumCompleted').textContent = money(data.completed_today ?? 0);
         document.getElementById('sumPending').textContent = money(data.pending_total ?? 0);
@@ -176,6 +191,7 @@
         }
 
         const items = data.data || [];
+
         document.getElementById('paymentsCountText').textContent = `${items.length} transacciones registradas`;
 
         if (!items.length) {
@@ -187,10 +203,10 @@
             <tr>
                 <td style="font-weight:700; color:#1d4ed8;">${item.payment_code}</td>
                 <td>${window.appFormat.dateTime(item.date_time)}</td>
-                <td style="font-weight:600;">${item.customer.name_customer}</td>
+                <td style="font-weight:600;">${item.customer?.name_customer ?? 'Cliente general'}</td>
                 <td>${item.concept}</td>
                 <td style="font-weight:700;">${money(item.amount)}</td>
-                <td>${item.payment_method}</td>
+                <td>${formatPaymentMethod(item.payment_method)}</td>
                 <td>${money(item.commission)}</td>
                 <td>${buildStatusBadge(item.status)}</td>
                 <td>
@@ -206,7 +222,7 @@
     }
 
     function exportPayments() {
-        const qs = buildQueryString().replace(/^/, '');
+        const qs = buildQueryString();
         window.location.href = `/api/payments/export?${qs}`;
     }
 

@@ -40,4 +40,23 @@ return [
         ],
     ],
 
+    // 👇 AGREGA ESTO
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+
+        'prices' => [
+            'basico_mensual' => env('STRIPE_PRICE_BASICO_MENSUAL'),
+            'basico_anual' => env('STRIPE_PRICE_BASICO_ANUAL'),
+            
+            'pro_mensual' => env('STRIPE_PRICE_PRO_MENSUAL'),
+            'pro_anual' => env('STRIPE_PRICE_PRO_ANUAL'),
+
+            'negocio_mensual' => env('STRIPE_PRICE_NEGOCIO_MENSUAL'),
+            'negocio_anual' => env('STRIPE_PRICE_NEGOCIO_ANUAL'),
+        ],
+    ],
+    
 ];
+
+

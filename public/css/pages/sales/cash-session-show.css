@@ -80,3 +80,86 @@
             align-items:stretch;
         }
     }
+
+/* =========================================================
+   FIX TEMA OSCURO - DETALLE DE CAJA
+========================================================= */
+
+.cash-detail-wrap {
+    color: var(--app-text);
+}
+
+.cash-detail-header h1,
+.cash-detail-wrap h1,
+.cash-detail-wrap h2,
+.cash-detail-wrap h3,
+.cash-detail-wrap .summary-value,
+.cash-detail-wrap .card-title,
+.cash-detail-wrap .info-value {
+    color: var(--panel-text) !important;
+}
+
+.cash-detail-header p,
+.cash-detail-wrap p,
+.cash-detail-wrap .summary-label,
+.cash-detail-wrap .card-subtitle,
+.cash-detail-wrap .info-label,
+.cash-detail-wrap td,
+.cash-detail-wrap .empty-box {
+    color: var(--panel-muted) !important;
+}
+
+.cash-detail-wrap .summary-card,
+.cash-detail-wrap .card,
+.cash-detail-wrap .note-card,
+.cash-detail-wrap .info-box,
+.cash-detail-wrap .method-box {
+    background: var(--panel-bg) !important;
+    color: var(--panel-text) !important;
+    border-color: var(--panel-border) !important;
+}
+
+.cash-detail-wrap .card-head {
+    border-color: var(--panel-border) !important;
+}
+
+.cash-detail-wrap table {
+    background: var(--panel-bg) !important;
+}
+
+.cash-detail-wrap th {
+    background: var(--panel-bg-soft) !important;
+    color: var(--panel-muted) !important;
+    border-color: var(--panel-border) !important;
+}
+
+.cash-detail-wrap td {
+    background: transparent !important;
+    border-color: var(--panel-border) !important;
+}
+
+.cash-detail-wrap tbody tr {
+    background: var(--panel-bg) !important;
+}
+
+.cash-detail-wrap tbody tr:hover {
+    background: var(--app-hover) !important;
+}
+
+.cash-detail-wrap .badge-green {
+    background: var(--success-bg) !important;
+    color: var(--success-text) !important;
+}
+
+.cash-detail-wrap .badge-blue {
+    background: var(--badge-bg) !important;
+    color: var(--badge-text) !important;
+}
+
+body[data-theme="dark"] .cash-detail-wrap .summary-card,
+body[data-theme="dark"] .cash-detail-wrap .card,
+body[data-theme="dark"] .cash-detail-wrap .note-card,
+body[data-theme="dark"] .cash-detail-wrap .info-box,
+body[data-theme="dark"] .cash-detail-wrap .method-box {
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+}

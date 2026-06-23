@@ -13,6 +13,8 @@ use Illuminate\Validation\ValidationException;
 
 class InventoryAdjustmentController extends Controller
 {
+    private const REASON_MAX_LENGTH = 30;
+
     private function getAuthenticatedUser()
     {
         $user = Auth::user();
@@ -124,7 +126,10 @@ class InventoryAdjustmentController extends Controller
             'product_id' => ['required', 'integer', 'exists:productt,product_id'],
             'type'       => ['required', 'string'],
             'quantity'   => ['required', 'integer', 'min:1'],
-            'reason'     => ['required', 'string', 'max:255'],
+            'reason'     => ['required', 'string', 'max:' . self::REASON_MAX_LENGTH],
+        ], [
+            'reason.required' => 'Selecciona o escribe un motivo.',
+            'reason.max' => 'El motivo no debe superar los ' . self::REASON_MAX_LENGTH . ' caracteres.',
         ]);
 
         $authUser  = $this->getAuthenticatedUser();
@@ -394,10 +399,15 @@ class InventoryAdjustmentController extends Controller
         $validated = $request->validate([
             'branch_id'          => ['nullable', 'integer', 'exists:branch,branch_id'],
             'type'               => ['required', 'string'],
-            'reason'             => ['required', 'string', 'max:255'],
+            'reason'             => ['required', 'string', 'max:' . self::REASON_MAX_LENGTH],
             'items'              => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:productt,product_id'],
             'items.*.quantity'   => ['required', 'integer', 'min:1'],
+        ], [
+            'reason.required' => 'Selecciona o escribe un motivo.',
+            'reason.max' => 'El motivo no debe superar los ' . self::REASON_MAX_LENGTH . ' caracteres.',
+            'items.required' => 'Debes capturar al menos un producto.',
+            'items.min' => 'Debes capturar al menos un producto.',
         ]);
 
         $authUser  = $this->getAuthenticatedUser();

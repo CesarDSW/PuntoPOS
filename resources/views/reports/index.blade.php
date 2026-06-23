@@ -24,7 +24,7 @@
 
         <div class="reports-actions">
             <select id="reportsPeriod" class="btn">
-                <option value="3m">Últimos 3 meses</option>
+               
                 <option value="6m" selected>Últimos 6 meses</option>
                 <option value="12m">Últimos 12 meses</option>
                 <option value="30d">Últimos 30 días</option>

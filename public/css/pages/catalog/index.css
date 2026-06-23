@@ -416,7 +416,6 @@ th {
 .confirm-modal-box,
 .confirm-info-card,
 .confirm-message-box,
-.modal,
 .history-item,
 .bulk-item,
 .product-box,
@@ -427,6 +426,10 @@ th {
     background: var(--panel-bg);
     color: var(--panel-text);
     border-color: var(--panel-border);
+}
+
+.modal {
+    background: var(--app-overlay) !important;
 }
 
 .input,

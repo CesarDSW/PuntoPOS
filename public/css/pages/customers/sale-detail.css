@@ -204,6 +204,81 @@ th {
     color: #64748b;
 }
 
+/* =========================================================
+   FIX ESPECIAL - DETALLE DE VENTA DEL CLIENTE
+========================================================= */
+
+body[data-theme="dark"] .sale-detail-table,
+body[data-theme="dark"] .sale-detail-table th,
+body[data-theme="dark"] .sale-detail-table td {
+    color: var(--panel-muted) !important;
+    opacity: 1 !important;
+}
+
+body[data-theme="dark"] .sale-detail-table th {
+    background: var(--panel-bg-soft) !important;
+    color: var(--panel-muted) !important;
+}
+
+body[data-theme="dark"] .sale-detail-table td {
+    color: var(--panel-muted) !important;
+}
+
+body[data-theme="dark"] .sale-detail-table td.sale-total,
+body[data-theme="dark"] .sale-detail-table td.sale-price {
+    color: var(--panel-text) !important;
+}
+
+body[data-theme="dark"] .sale-detail-table tbody tr {
+    background: var(--panel-bg) !important;
+}
+
+body[data-theme="dark"] .sale-detail-table tbody tr:hover {
+    background: var(--app-hover) !important;
+}
+
+body[data-theme="dark"] .totals-panel,
+body[data-theme="dark"] .payment-panel {
+    background: var(--panel-bg-soft) !important;
+    border-color: var(--panel-border) !important;
+}
+
+/* =========================================================
+   DETALLE DE VENTA - CORRECCIÓN DE TEXTO EN TABLA
+========================================================= */
+
+.sale-detail-table,
+.sale-detail-table th,
+.sale-detail-table td {
+    color: #334155 !important;
+    opacity: 1 !important;
+}
+
+.sale-detail-table th {
+    background: #f8fafc;
+    color: #475569 !important;
+    font-weight: 800;
+}
+
+.sale-detail-table td {
+    color: #334155 !important;
+    font-weight: 500;
+}
+
+.sale-detail-table td.sale-total,
+.sale-detail-table td.sale-price {
+    color: #0f172a !important;
+    font-weight: 800;
+}
+
+.sale-detail-table tbody tr {
+    background: #ffffff;
+}
+
+.sale-detail-table tbody tr:hover {
+    background: #f8fafc;
+}
+
 @media (max-width: 1200px) {
     .summary-grid,
     .sale-meta-grid {

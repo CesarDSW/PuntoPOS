@@ -73,6 +73,18 @@
         .sale-actions-menu .danger-action {
             color: #dc2626;
         }
+
+        .sales-date-filter {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .sales-date-filter label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #64748b;
+        }
     </style>
 @endpush
 
@@ -114,7 +126,17 @@
 
     <div class="filters-card">
         <input type="text" id="salesSearch" class="input" placeholder="Buscar por ID, cliente...">
-        <input type="date" id="salesDate" class="input">
+
+        <div class="sales-date-filter">
+            <label for="salesDateFrom">Fecha inicio</label>
+            <input type="date" id="salesDateFrom" class="input">
+        </div>
+
+        <div class="sales-date-filter">
+            <label for="salesDateTo">Fecha final</label>
+            <input type="date" id="salesDateTo" class="input">
+        </div>
+
         <select id="salesStatus" class="select">
             <option value="all">Todos los estados</option>
             <option value="PAGADA">Pagada</option>
@@ -284,12 +306,12 @@
     }
 
     function escapeHtml(value) {
-    return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     function showError(id, message) {
@@ -575,16 +597,24 @@
 
     async function loadSales() {
         const search = document.getElementById('salesSearch').value.trim();
-        const date = document.getElementById('salesDate').value;
+        const dateFrom = document.getElementById('salesDateFrom').value;
+        const dateTo = document.getElementById('salesDateTo').value;
         const status = document.getElementById('salesStatus').value;
+        const tbody = document.getElementById('salesTableBody');
+
+        if (dateFrom && dateTo && dateFrom > dateTo) {
+            tbody.innerHTML = `<tr><td colspan="8" class="empty-box">La fecha inicio no puede ser mayor que la fecha final.</td></tr>`;
+            document.getElementById('salesCountText').textContent = '0 ventas registradas';
+            return;
+        }
 
         const params = new URLSearchParams({ per_page: 50, status });
 
         if (search) params.append('search', search);
-        if (date) params.append('date', date);
+        if (dateFrom) params.append('date_from', dateFrom);
+        if (dateTo) params.append('date_to', dateTo);
 
         const { response, data } = await apiFetch(`/api/sales?${params.toString()}`);
-        const tbody = document.getElementById('salesTableBody');
 
         if (!response.ok) {
             tbody.innerHTML = `<tr><td colspan="8" class="empty-box">No se pudieron cargar las ventas.</td></tr>`;
@@ -629,7 +659,8 @@
         document.addEventListener('click', closeSaleActionMenus);
 
         document.getElementById('salesSearch').addEventListener('input', loadSales);
-        document.getElementById('salesDate').addEventListener('change', loadSales);
+        document.getElementById('salesDateFrom').addEventListener('change', loadSales);
+        document.getElementById('salesDateTo').addEventListener('change', loadSales);
         document.getElementById('salesStatus').addEventListener('change', loadSales);
 
         const closePosOverlay = document.getElementById('closePosOverlay');

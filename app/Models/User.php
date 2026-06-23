@@ -11,14 +11,14 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 
 class User extends Authenticatable
 {
-   use Notifiable, TwoFactorAuthenticatable;
+    use Notifiable, TwoFactorAuthenticatable;
 
-   protected $table = 'userr';
-   protected $primaryKey = 'userr_id';
+    protected $table = 'userr';
+    protected $primaryKey = 'userr_id';
 
-   public $timestamps = false;
+    public $timestamps = false;
 
-   protected $fillable = [
+    protected $fillable = [
        'name_user',
        'phone',
        'email',
@@ -32,17 +32,27 @@ class User extends Authenticatable
        'rol_idfk',
        'company_idfk',
        'state',
-   ];
+    ];
 
-   protected $hidden = [
-    'password',
-    'remember_token',
-    'two_factor_secret',
-    'two_factor_recovery_codes',
-   ];
+    protected $hidden = [
+        'password',
+        'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
+    ];
 
-   public function rol()
-   {
+    public function rol()
+    {
        return $this->belongsTo(Rol::class, 'rol_idfk', 'rol_id');
-   }
+    }
+
+    public function isDeveloper(): bool 
+    {
+        return optional($this->rol)->type_rol === 'DEV';
+    }
+
+    public function preference()
+    {
+        return $this->hasOne(UserPreference::class, 'userr_idfk', 'userr_id');
+    }
 }

@@ -74,8 +74,23 @@ class CustomerController extends Controller
         $companyId = (int) $user->company_idfk;
 
         $validated = $request->validate([
-            'name_customer' => ['required', 'string', 'max:100'],
-            'phone' => ['required', 'string', 'max:10'],
+            'name_customer' => [
+                'required',
+                'string',
+                'max:100',
+            ],
+
+            'phone' => [
+                'required',
+                'string',
+                'max:10',
+                Rule::unique('customer', 'phone')->where(function ($query) use ($companyId) {
+                    return $query
+                        ->where('company_idfk', $companyId)
+                        ->where('status_customer', 1);
+                }),
+            ],
+
             'email' => [
                 'required',
                 'email',
@@ -86,6 +101,14 @@ class CustomerController extends Controller
                         ->where('status_customer', 1);
                 }),
             ],
+        ], [
+            'name_customer.required' => 'El nombre del cliente es obligatorio.',
+            'phone.required' => 'El teléfono del cliente es obligatorio.',
+            'phone.unique' => 'Este número de teléfono ya está registrado en otro cliente.',
+            'phone.max' => 'El teléfono no debe tener más de 10 caracteres.',
+            'email.required' => 'El correo del cliente es obligatorio.',
+            'email.email' => 'Ingresa un correo válido.',
+            'email.unique' => 'Este correo ya está registrado en otro cliente.',
         ]);
 
         try {
@@ -97,11 +120,15 @@ class CustomerController extends Controller
                 'status_customer' => 1,
             ]);
 
-            return redirect()->route('customers')->with('success', 'Cliente registrado correctamente.');
+            return redirect()
+                ->route('customers')
+                ->with('success', 'Cliente registrado correctamente.');
         } catch (\Exception $e) {
-            return back()->withErrors([
-                'error' => 'Ocurrió un error al registrar el cliente: ' . $e->getMessage()
-            ])->withInput();
+            return back()
+                ->withErrors([
+                    'error' => 'Ocurrió un error al registrar el cliente: ' . $e->getMessage(),
+                ])
+                ->withInput();
         }
     }
 
@@ -109,6 +136,7 @@ class CustomerController extends Controller
     {
         $user = $this->getAuthenticatedUser();
         $companyId = (int) $user->company_idfk;
+
         $customer = $this->getCompanyCustomerOrFail((int) $id, $companyId);
 
         $paymentsResume = DB::table('payments')
@@ -123,7 +151,12 @@ class CustomerController extends Controller
             ->where('s.company_idfk', $companyId)
             ->where('s.customer_idfk', $customer->customer_id)
             ->orderByDesc('s.date_time')
-            ->select('s.sale_id', 's.date_time', 's.total', 's.status_sale')
+            ->select(
+                's.sale_id',
+                's.date_time',
+                's.total',
+                's.status_sale'
+            )
             ->selectRaw("COALESCE(pay.payment_methods, '-') AS payment_methods")
             ->get();
 
@@ -155,6 +188,7 @@ class CustomerController extends Controller
     {
         $user = $this->getAuthenticatedUser();
         $companyId = (int) $user->company_idfk;
+
         $customer = $this->getCompanyCustomerOrFail((int) $customerId, $companyId);
 
         $paymentsResume = DB::table('payments')
@@ -198,7 +232,13 @@ class CustomerController extends Controller
             ->leftJoin('productt as p', 'p.product_id', '=', 'si.product_idfk')
             ->leftJoin('servicee as sv', 'sv.service_id', '=', 'si.service_idfk')
             ->where('si.sale_idfk', $sale->sale_id)
-            ->select('si.item_type', 'si.amount', 'si.unit_price', 'si.discount', 'si.total_line')
+            ->select(
+                'si.item_type',
+                'si.amount',
+                'si.unit_price',
+                'si.discount',
+                'si.total_line'
+            )
             ->selectRaw('COALESCE(p.name_product, sv.name_service) AS item_name')
             ->orderBy('si.saleitem_id')
             ->get();
@@ -210,6 +250,7 @@ class CustomerController extends Controller
     {
         $user = $this->getAuthenticatedUser();
         $companyId = (int) $user->company_idfk;
+
         $customer = $this->getCompanyCustomerOrFail((int) $id, $companyId);
 
         return view('customers.edit', compact('customer'));
@@ -219,11 +260,29 @@ class CustomerController extends Controller
     {
         $user = $this->getAuthenticatedUser();
         $companyId = (int) $user->company_idfk;
+
         $customer = $this->getCompanyCustomerOrFail((int) $id, $companyId);
 
         $validated = $request->validate([
-            'name_customer' => ['required', 'string', 'max:100'],
-            'phone' => ['required', 'string', 'max:10'],
+            'name_customer' => [
+                'required',
+                'string',
+                'max:100',
+            ],
+
+            'phone' => [
+                'required',
+                'string',
+                'max:10',
+                Rule::unique('customer', 'phone')
+                    ->ignore($customer->customer_id, 'customer_id')
+                    ->where(function ($query) use ($companyId) {
+                        return $query
+                            ->where('company_idfk', $companyId)
+                            ->where('status_customer', 1);
+                    }),
+            ],
+
             'email' => [
                 'required',
                 'email',
@@ -236,6 +295,14 @@ class CustomerController extends Controller
                             ->where('status_customer', 1);
                     }),
             ],
+        ], [
+            'name_customer.required' => 'El nombre del cliente es obligatorio.',
+            'phone.required' => 'El teléfono del cliente es obligatorio.',
+            'phone.unique' => 'Este número de teléfono ya está registrado en otro cliente.',
+            'phone.max' => 'El teléfono no debe tener más de 10 caracteres.',
+            'email.required' => 'El correo del cliente es obligatorio.',
+            'email.email' => 'Ingresa un correo válido.',
+            'email.unique' => 'Este correo ya está registrado en otro cliente.',
         ]);
 
         try {
@@ -245,30 +312,42 @@ class CustomerController extends Controller
                 'email' => $validated['email'],
             ]);
 
-            return redirect()->route('customers')->with('success', 'Cliente actualizado correctamente.');
+            return redirect()
+                ->route('customers')
+                ->with('success', 'Cliente actualizado correctamente.');
         } catch (\Exception $e) {
-            return back()->withErrors([
-                'error' => 'Ocurrió un error al actualizar el cliente: ' . $e->getMessage()
-            ])->withInput();
+            return back()
+                ->withErrors([
+                    'error' => 'Ocurrió un error al actualizar el cliente: ' . $e->getMessage(),
+                ])
+                ->withInput();
         }
     }
 
-    public function deleteCustomer(Request $request, $id)
+    public function deleteCustomer($id)
     {
         $user = $this->getAuthenticatedUser();
         $companyId = (int) $user->company_idfk;
-        $customer = $this->getCompanyCustomerOrFail((int) $id, $companyId);
+        $customerId = (int) $id;
+
+        $customer = $this->getCompanyCustomerOrFail($customerId, $companyId);
 
         try {
-            $customer->update([
-                'status_customer' => 0,
-            ]);
+            DB::table('customer')
+                ->where('customer_id', $customer->customer_id)
+                ->where('company_idfk', $companyId)
+                ->update([
+                    'status_customer' => 0,
+                ]);
 
-            return redirect()->route('customers')->with('success', 'Cliente eliminado correctamente.');
+            return redirect()
+                ->route('customers')
+                ->with('success', 'Cliente eliminado correctamente.');
         } catch (\Exception $e) {
-            return redirect()->route('customers')->withErrors([
-                'error' => 'Ocurrió un error al eliminar el cliente: ' . $e->getMessage()
-            ]);
+            return back()
+                ->withErrors([
+                    'error' => 'Ocurrió un error al eliminar el cliente: ' . $e->getMessage(),
+                ]);
         }
     }
 }

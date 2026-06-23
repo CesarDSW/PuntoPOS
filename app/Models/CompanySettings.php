@@ -13,8 +13,10 @@ class CompanySettings extends Model
     protected $fillable = [
         'company_idfk',
         'notify_low_stock',
-        'notify_sale_cancelled',
         'notify_out_of_stock',
+        'notify_sale_cancelled',
+        'notify_sale_pending',
+        'notify_sale_completed',
         'language',
         'timezone',
         'date_format',
@@ -22,7 +24,6 @@ class CompanySettings extends Model
         'auto_print',
         'show_taxes',
         'printer_width',
-        'theme',
         'price_decimals',
     ];
 }

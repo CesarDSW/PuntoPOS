@@ -72,7 +72,7 @@
         </div>
 
         <div style="overflow:auto;">
-            <table>
+            <table class="customer-history-table">
                 <thead>
                     <tr>
                         <th>ID Venta</th>
@@ -83,6 +83,7 @@
                         <th>Acciones</th>
                     </tr>
                 </thead>
+
                 <tbody>
                     @forelse($sales as $sale)
                         @php
@@ -97,20 +98,35 @@
                         @endphp
 
                         <tr>
-                            <td style="font-weight:700; color:#1d4ed8;">
+                            <td class="sale-id">
                                 V-{{ str_pad($sale->sale_id, 4, '0', STR_PAD_LEFT) }}
                             </td>
-                            <td>{{ \Carbon\Carbon::parse($sale->date_time)->format('Y-m-d H:i') }}</td>
-                            <td style="font-weight:700;">${{ number_format((float) $sale->total, 2) }}</td>
-                            <td>{{ $sale->payment_methods }}</td>
-                            <td><span class="badge {{ $badge }}">{{ $statusText }}</span></td>
+
+                            <td>
+                                {{ \Carbon\Carbon::parse($sale->date_time)->format('Y-m-d H:i') }}
+                            </td>
+
+                            <td class="sale-total">
+                                ${{ number_format((float) $sale->total, 2) }}
+                            </td>
+
+                            <td>
+                                {{ $sale->payment_methods ?? '-' }}
+                            </td>
+
+                            <td>
+                                <span class="badge {{ $badge }}">{{ $statusText }}</span>
+                            </td>
+
                             <td>
                                 <a href="{{ route('customers.sales.show', [$customer->customer_id, $sale->sale_id]) }}" class="icon-link" title="Ver detalle">👁️</a>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="empty-box">Este cliente todavía no tiene compras registradas.</td>
+                            <td colspan="6" class="empty-box">
+                                Este cliente todavía no tiene compras registradas.
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -118,4 +134,5 @@
         </div>
     </div>
 </div>
+
 @endsection

@@ -189,6 +189,19 @@ class ShiftController extends SalesBaseController
         ]);
     }
 
+    protected function authorizeSalesPosUse(): void
+    {
+        $user = $this->getAuthenticatedUser();
+
+        if (!$user) {
+            abort(401, 'Usuario no autenticado.');
+        }
+
+        if (empty($user->company_idfk)) {
+            abort(403, 'No tienes una empresa asignada.');
+        }
+    }
+
     private function formatDurationText(Carbon $start, Carbon $end): string
     {
         $totalMinutes = $start->diffInMinutes($end);

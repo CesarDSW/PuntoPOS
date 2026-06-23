@@ -41,6 +41,10 @@ class GoogleAuthController extends Controller
 
                 Auth::login($existingUser);
 
+                if ($existingUser->isDeveloper()) {
+                    return redirect()->route('developer.support.index');
+                }
+
                 return redirect()->route('dashboard');
             }
             
@@ -63,9 +67,9 @@ class GoogleAuthController extends Controller
     //prueba
     public function fakeGoogleLogin(){
         $googleUser = [
-            'google_id' => 'google_test_12345',
-            'google_email' => 'prueba.google@gmail.com',
-            'name_user' => 'Usuario Google Prueba',
+            'google_id' => 'google_dev_12345',
+            'google_email' => 'dev@punto.com',
+            'name_user' => 'Desarrollador Punto',
         ];
 
         $existingUser = User::where('email', $googleUser['google_email'])->first();
@@ -77,14 +81,17 @@ class GoogleAuthController extends Controller
                 $existingUser->save();
             }
 
-                Auth::login($existingUser);
+            Auth::login($existingUser);
 
-                return redirect()->route('dashboard');
+            if ($existingUser->isDeveloper()) {
+                return redirect()->route('developer.support.index');
+            }
+
+            return redirect()->route('dashboard');
         }
         
         //Si no existe, guardar datos temporales para precargar registro
         Session::put('google_user', $googleUser);
         return redirect()->route('register')->with('info', 'Completa tu registro para continuar.');
     }
-    
 }

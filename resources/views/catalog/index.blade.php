@@ -4,6 +4,66 @@
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/pages/catalog/index.css') }}">
+
+    <style>
+        .bulk-upload-result-box {
+            max-width: 760px;
+        }
+
+        .bulk-upload-result-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .bulk-upload-result-grid .summary-card {
+            min-height: 118px;
+        }
+
+        .bulk-upload-result-message {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 16px;
+            border-radius: 16px;
+            background: #ecfdf5;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+        }
+
+        .bulk-upload-result-icon {
+            width: 42px;
+            height: 42px;
+            min-width: 42px;
+            border-radius: 50%;
+            background: #22c55e;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 800;
+        }
+
+        .bulk-upload-result-message strong {
+            display: block;
+            margin-bottom: 4px;
+            color: #14532d;
+        }
+
+        .bulk-upload-result-message p {
+            margin: 0;
+            color: #166534;
+            line-height: 1.45;
+        }
+
+        @media (max-width: 768px) {
+            .bulk-upload-result-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 @endpush
 
 @section('content')
@@ -285,9 +345,25 @@
                 <a class="link-btn" href="/api/catalog/bulk-upload/template">Descargar plantilla</a>
             </div>
 
-            <div class="field-group">
+            <div class="field-group file-upload-group">
                 <label class="field-label">Paso 2</label>
-                <input type="file" id="bulkFile" class="input" accept=".xlsx,.xls,.csv">
+            
+                <label for="bulkFile" class="file-dropzone">
+                    <input 
+                        type="file"
+                        id="bulkFile"
+                        class="file-input-hidden"
+                        accept=".xlsx,.xls,.csv"
+                    >
+                    
+                    <span class="file-dropzone-icon">⇧</span>
+                    <span class="file-dropzone-title">Haz clic para subir tu archivo</span>
+                    <span class="file-dropzone-help">Excel o CSV: .xlsx, .xls, .csv</span>
+                </label>
+
+                <p id="bulkFileName" class="file-selected-name">
+                    Ningún archivo seleccionado
+                </p>
             </div>
 
             <div class="text-muted">
@@ -300,6 +376,49 @@
         <div class="modal-footer">
             <button class="btn" type="button" onclick="closeBulkModal()">Cancelar</button>
             <button class="btn btn-primary" type="button" onclick="submitBulkUpload()">Subir archivo</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="bulkUploadResultModal">
+    <div class="modal-box bulk-upload-result-box">
+        <div class="modal-header">
+            <div>
+                <div class="modal-title">Carga completada</div>
+                <div class="modal-subtitle">La carga masiva se procesó correctamente.</div>
+            </div>
+            <button class="btn" type="button" onclick="closeBulkUploadResultModal()">Cerrar</button>
+        </div>
+
+        <div class="modal-body">
+            <div class="bulk-upload-result-grid">
+                <div class="summary-card">
+                    <div class="summary-label">Productos nuevos</div>
+                    <div class="summary-value" id="bulkResultProductsCreated">0</div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-label">Productos asignados</div>
+                    <div class="summary-value" id="bulkResultProductsAssigned">0</div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-label">Servicios nuevos</div>
+                    <div class="summary-value" id="bulkResultServicesCreated">0</div>
+                </div>
+            </div>
+
+            <div class="bulk-upload-result-message">
+                <div class="bulk-upload-result-icon">✓</div>
+                <div>
+                    <strong>Información cargada correctamente</strong>
+                    <p>Los productos y servicios procesados ya fueron actualizados en el catálogo.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-primary" type="button" onclick="closeBulkUploadResultModal()">Aceptar</button>
         </div>
     </div>
 </div>
@@ -494,7 +613,21 @@
         const tbody = document.getElementById('catalogTableBody');
 
         if (!response.ok) {
-            tbody.innerHTML = `<tr><td colspan="9">No se pudo cargar el catálogo.</td></tr>`;
+            console.error('Error al cargar catálogo:', {
+                status: response.status,
+                data: data
+            });
+
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9">
+                        No se pudo cargar el catálogo.<br>
+                        <small class="text-muted">
+                            Error ${response.status}: ${data.message || 'Revisa la consola para más detalles.'}
+                        </small>
+                    </td>
+                </tr>
+            `;
             return;
         }
 
@@ -1095,12 +1228,36 @@
         if (!catalogAccess.mass_import) return;
 
         hideError('bulkUploadErrorBox');
-        document.getElementById('bulkFile').value = '';
+
+        const bulkFile = document.getElementById('bulkFile');
+
+        if (bulkFile) {
+            bulkFile.value = '';
+        }
+
+        const bulkFileName = document.getElementById('bulkFileName');
+
+        if (bulkFileName) {
+            bulkFileName.textContent = 'Ningún archivo seleccionado';
+            bulkFileName.classList.remove('has-file');
+        }
+
         document.getElementById('bulkUploadModal').classList.add('show');
     }
 
     function closeBulkModal() {
         document.getElementById('bulkUploadModal').classList.remove('show');
+    }
+
+    function showBulkUploadResult(data) {
+        document.getElementById('bulkResultProductsCreated').textContent = Number(data.products_created ?? 0);
+        document.getElementById('bulkResultProductsAssigned').textContent = Number(data.products_assigned ?? 0);
+        document.getElementById('bulkResultServicesCreated').textContent = Number(data.services_created ?? 0);
+        document.getElementById('bulkUploadResultModal').classList.add('show');
+    }
+
+    function closeBulkUploadResultModal() {
+        document.getElementById('bulkUploadResultModal').classList.remove('show');
     }
 
     async function submitBulkUpload() {
@@ -1156,12 +1313,11 @@
         closeBulkModal();
         await loadCatalogPage();
 
-        alert(
-            `Carga completada.\n` +
-            `Productos nuevos: ${productsCreated}\n` +
-            `Productos asignados a la sucursal actual: ${productsAssigned}\n` +
-            `Servicios nuevos: ${servicesCreated}`
-        );
+        showBulkUploadResult({
+            products_created: productsCreated,
+            products_assigned: productsAssigned,
+            services_created: servicesCreated
+        });
     }
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -1175,6 +1331,8 @@
 
         const confirmModal = document.getElementById('confirmActionModal');
         const confirmButton = document.getElementById('confirmActionButton');
+        const bulkFileInput = document.getElementById('bulkFile');
+        const bulkFileName = document.getElementById('bulkFileName');
 
         if (confirmButton) {
             confirmButton.addEventListener('click', async function () {
@@ -1190,6 +1348,28 @@
             confirmModal.addEventListener('click', function (e) {
                 if (e.target === confirmModal) {
                     closeConfirmModal();
+                }
+            });
+        }
+
+        if (bulkFileInput && bulkFileName) {
+            bulkFileInput.addEventListener('change', function () {
+                if (bulkFileInput.files && bulkFileInput.files.length > 0) {
+                    bulkFileName.textContent = bulkFileInput.files[0].name;
+                    bulkFileName.classList.add('has-file');
+                } else {
+                    bulkFileName.textContent = 'Ningún archivo seleccionado';
+                    bulkFileName.classList.remove('has-file');
+                }
+            });
+        }
+
+        const bulkResultModal = document.getElementById('bulkUploadResultModal');
+
+        if (bulkResultModal) {
+            bulkResultModal.addEventListener('click', function (e) {
+                if (e.target === bulkResultModal) {
+                    closeBulkUploadResultModal();
                 }
             });
         }

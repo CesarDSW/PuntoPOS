@@ -8,6 +8,7 @@
 
 @php
     $badge = 'badge-blue';
+
     if ($sale->status_sale === 'PENDIENTE') {
         $badge = 'badge-yellow';
     } elseif ($sale->status_sale === 'CANCELADA') {
@@ -46,7 +47,9 @@
 
         <div class="summary-card">
             <div class="summary-label">Estado</div>
-            <div class="summary-value"><span class="badge {{ $badge }}">{{ $sale->status_sale }}</span></div>
+            <div class="summary-value">
+                <span class="badge {{ $badge }}">{{ $sale->status_sale }}</span>
+            </div>
             <div class="summary-note">{{ \Carbon\Carbon::parse($sale->date_time)->format('Y-m-d H:i') }}</div>
         </div>
     </div>
@@ -87,7 +90,7 @@
         </div>
 
         <div style="overflow:auto;">
-            <table>
+            <table class="sale-detail-table">
                 <thead>
                     <tr>
                         <th>Concepto</th>
@@ -98,15 +101,16 @@
                         <th>Total</th>
                     </tr>
                 </thead>
+
                 <tbody>
                     @forelse($items as $item)
                         <tr>
                             <td>{{ $item->item_name ?? '-' }}</td>
                             <td>{{ $item->item_type }}</td>
                             <td>{{ $item->amount }}</td>
-                            <td>${{ number_format((float) $item->unit_price, 2) }}</td>
+                            <td class="sale-price">${{ number_format((float) $item->unit_price, 2) }}</td>
                             <td>${{ number_format((float) $item->discount, 2) }}</td>
-                            <td style="font-weight:700;">${{ number_format((float) $item->total_line, 2) }}</td>
+                            <td class="sale-total">${{ number_format((float) $item->total_line, 2) }}</td>
                         </tr>
                     @empty
                         <tr>
@@ -161,4 +165,5 @@
         </div>
     </div>
 </div>
+
 @endsection

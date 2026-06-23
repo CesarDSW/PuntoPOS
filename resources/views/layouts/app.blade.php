@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Punto')</title>
     
+    <link rel="stylesheet" href="{{ asset('css/theme-colors.css') }}">
     <link rel="stylesheet" href="{{ asset('css/layout/dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/components/topbar.css') }}">
 
@@ -146,7 +147,63 @@
     })();
 </script>
 
-<body>
+
+@php
+    $themePrefs = \App\Support\CompanyPreference::all($companyId);
+
+    $themePreference =
+        $themePrefs['theme'] ??
+        $themePrefs['theme_mode'] ??
+        $themePrefs['appearance'] ??
+        $themePrefs['interface_theme'] ??
+        session('theme', 'light');
+
+    if (! in_array($themePreference, ['light', 'dark', 'auto'])) {
+        $themePreference = 'light';
+    }
+
+    $resolvedTheme = $themePreference === 'auto' ? 'light' : $themePreference;
+@endphp
+
+<body
+    data-theme="{{ $resolvedTheme }}"
+    data-theme-preference="{{ $themePreference }}"
+>
+    <script>
+        (function () {
+            const body = document.body;
+            const root = document.documentElement;
+            const preference = body.dataset.themePreference || body.dataset.theme || 'light';
+            const media = window.matchMedia('(prefers-color-scheme: dark)');
+
+            function resolveTheme() {
+                if (preference === 'auto') {
+                    return media.matches ? 'dark' : 'light';
+                }
+
+                return preference === 'dark' ? 'dark' : 'light';
+            }
+
+            function applyTheme() {
+                const resolved = resolveTheme();
+
+                root.setAttribute('data-theme', resolved);
+                body.setAttribute('data-theme', resolved);
+                body.setAttribute('data-theme-preference', preference);
+            }
+
+            applyTheme();
+
+            if (preference === 'auto') {
+                if (typeof media.addEventListener === 'function') {
+                    media.addEventListener('change', applyTheme);
+                } else if (typeof media.addListener === 'function') {
+                    media.addListener(applyTheme);
+                }
+            }
+        })();
+    </script>
+
     <div class="app-shell">
         @include('partials.sidebar')
 

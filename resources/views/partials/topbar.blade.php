@@ -37,6 +37,38 @@
     </div>
 
     <div class="topbar-right">
+        <div class="notification-wrapper" id="notificationWrapper">
+            <button type="button" class="notification-button" id="notificationButton">
+                <span class="notification-icon">🔔</span>
+                <span class="notification-count" id="notificationCount" style="display:none;">0</span>
+            </button>
+
+            <div class="notification-dropdown" id="notificationDropdown">
+                <div class="notification-dropdown-header">
+                    <div>
+                        <strong>Notificaciones</strong>
+                        <span>Últimas alertas del negocio</span>
+                    </div>
+
+                    <div class="notification-header-actions">
+                            <button type="button" id="markAllNotificationsRead">
+                                Marcar leídas
+                            </button>
+
+                            <button type="button" id="deleteReadNotifications">
+                                Borrar leídas
+                            </button>
+                    </div>
+                </div>
+
+                <div class="notification-dropdown-list" id="notificationList">
+                    <div class="notification-empty">
+                        Cargando notificaciones...
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <div class="branch-selector">
             @if($canOpenBranchDropdown)
                 <button type="button" class="branch-button" id="branchButton">
@@ -382,5 +414,319 @@ document.addEventListener('DOMContentLoaded', function () {
 
     applyBranchModalMode();
 });
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const notificationWrapper = document.getElementById('notificationWrapper');
+        const notificationButton = document.getElementById('notificationButton');
+        const notificationDropdown = document.getElementById('notificationDropdown');
+        const notificationList = document.getElementById('notificationList');
+        const notificationCount = document.getElementById('notificationCount');
+        const markAllButton = document.getElementById('markAllNotificationsRead');
+        const deleteReadButton = document.getElementById('deleteReadNotifications');
+
+        if (!notificationWrapper || !notificationButton || !notificationDropdown || !notificationList) {
+            return;
+        }
+
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+
+        const routes = {
+            topbar: "{{ route('notifications.topbar') }}",
+            readAll: "{{ route('notifications.read.all') }}",
+            deleteRead: "{{ route('notifications.delete.read') }}",
+            readBase: "{{ url('/notificaciones') }}",
+        };
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function getNotificationIcon(typeCode) {
+            if (typeCode === 'OUT_OF_STOCK') {
+                return '⛔';
+            }
+
+            if (typeCode === 'LOW_STOCK') {
+                return '📦';
+            }
+
+            if (typeCode === 'SALE_CANCELLED') {
+                return '❌';
+            }
+
+            if (typeCode === 'SALE_PENDING') {
+                return '⏳';
+            }
+
+            if (typeCode === 'SALE_COMPLETED') {
+                return '✅';
+            }
+
+            return '🔔';
+        }
+
+        function getSwalThemeOptions() {
+            const isDark =
+                document.body.dataset.theme === 'dark' ||
+                document.documentElement.dataset.theme === 'dark';
+
+            return {
+                background: isDark ? '#0b1b36' : '#ffffff',
+                color: isDark ? '#f8fafc' : '#0f172a'
+            };
+        }
+
+        async function showSystemAlert(options) {
+            if (typeof Swal === 'undefined') {
+                console.warn('SweetAlert2 no está cargado.');
+                return;
+            }
+
+            return Swal.fire({
+                ...getSwalThemeOptions(),
+                ...options
+            });
+        }
+
+        async function loadNotifications() {
+            try {
+                const response = await fetch(routes.topbar, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!response.ok) {
+                    notificationList.innerHTML = `
+                        <div class="notification-empty">
+                            No se pudieron cargar las notificaciones.
+                        </div>
+                    `;
+                    return;
+                }
+
+                const data = await response.json();
+
+                const unreadCount = Number(data.unread_count || 0);
+                const notifications = data.notifications || [];
+
+                if (unreadCount > 0) {
+                    notificationCount.textContent = unreadCount > 9 ? '9+' : unreadCount;
+                    notificationCount.style.display = 'inline-flex';
+                } else {
+                    notificationCount.style.display = 'none';
+                }
+
+                if (notifications.length === 0) {
+                    notificationList.innerHTML = `
+                        <div class="notification-empty">
+                            No tienes notificaciones.
+                        </div>
+                    `;
+                    return;
+                }
+
+                notificationList.innerHTML = notifications.map(function (item) {
+                    const unreadClass = item.is_read ? '' : 'unread';
+
+                    return `
+                        <div class="notification-item ${unreadClass}" data-id="${escapeHtml(item.id)}">
+                            <button type="button" class="notification-item-main" data-id="${escapeHtml(item.id)}">
+                                <span class="notification-item-icon">
+                                    ${getNotificationIcon(item.type_code)}
+                                </span>
+
+                                <span class="notification-item-content">
+                                    <strong>${escapeHtml(item.title)}</strong>
+                                    <small>${escapeHtml(item.message)}</small>
+                                    <em>${escapeHtml(item.created_at)}</em>
+                                </span>
+                            </button>
+
+                            <button type="button" class="notification-delete-btn" data-id="${escapeHtml(item.id)}" title="Eliminar notificación">
+                                ×
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+
+                document.querySelectorAll('.notification-item-main').forEach(function (itemButton) {
+                    itemButton.addEventListener('click', async function () {
+                        const notificationId = this.dataset.id;
+
+                        await fetch(`${routes.readBase}/${notificationId}/leer`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+
+                        await loadNotifications();
+                    });
+                });
+
+                document.querySelectorAll('.notification-delete-btn').forEach(function (deleteButton) {
+                    deleteButton.addEventListener('click', async function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        const notificationId = this.dataset.id;
+
+                        const response = await fetch(`${routes.readBase}/${notificationId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({}));
+                            console.error('No se pudo eliminar la notificación:', errorData);
+                            await showSystemAlert({
+                                title: 'No se pudo eliminar',
+                                text: 'Ocurrió un problema al eliminar la notificación.',
+                                icon: 'error',
+                                confirmButtonText: 'Entendido',
+                                confirmButtonColor: '#3b82f6'
+                            });
+                            return;
+                        }
+
+                        await loadNotifications();
+                    });
+                });
+            } catch (error) {
+                notificationList.innerHTML = `
+                    <div class="notification-empty">
+                        Error al cargar notificaciones.
+                    </div>
+                `;
+            }
+        }
+
+        notificationButton.addEventListener('click', function (event) {
+            event.stopPropagation();
+
+            notificationDropdown.classList.toggle('show');
+
+            const branchDropdown = document.getElementById('branchDropdown');
+            if (branchDropdown) {
+                branchDropdown.classList.remove('show');
+            }
+
+            loadNotifications();
+        });
+
+        notificationDropdown.addEventListener('click', function (event) {
+            event.stopPropagation();
+        });
+
+        document.addEventListener('click', function () {
+            notificationDropdown.classList.remove('show');
+        });
+
+        if (markAllButton) {
+            markAllButton.addEventListener('click', async function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                try {
+                    const response = await fetch(routes.readAll, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        console.error('Error al marcar notificaciones como leídas');
+                        return;
+                    }
+
+                    await loadNotifications();
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            });
+        }
+
+       if (deleteReadButton) {
+            deleteReadButton.addEventListener('click', async function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                
+                const confirmDelete = await showSystemAlert({
+                    title: '¿Borrar notificaciones leídas?',
+                    text: 'Esta acción eliminará todas las notificaciones que ya fueron marcadas como leídas.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, borrar',
+                    cancelButtonText: 'Cancelar',
+                    reverseButtons: true,
+                    confirmButtonColor: '#ef4444',
+                    cancelButtonColor: '#64748b'
+                });
+
+                if (!confirmDelete.isConfirmed) {
+                    return;
+                }
+
+                const response = await fetch(routes.deleteRead, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error('No se pudieron borrar las notificaciones leídas:', errorData);
+
+                    await showSystemAlert({
+                        title: 'No se pudieron borrar',
+                        text: errorData.message || 'Ocurrió un problema al borrar las notificaciones leídas.',
+                        icon: 'error',
+                        confirmButtonText: 'Entendido',
+                        confirmButtonColor: '#3b82f6'
+                    });
+
+                    return;
+                }
+
+                await loadNotifications();
+
+                await showSystemAlert({
+                    title: 'Notificaciones eliminadas',
+                    text: 'Las notificaciones leídas fueron eliminadas correctamente.',
+                    icon: 'success',
+                    timer: 1600,
+                    showConfirmButton: false
+                });
+            });
+        }
+        
+        loadNotifications();
+
+        setInterval(loadNotifications, 30000);
+    });
 </script>
 @endif

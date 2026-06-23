@@ -96,7 +96,6 @@ th {
 .chart-card,
 .list-card,
 .modal-box,
-.modal,
 .history-item,
 .bulk-item,
 .product-box,
@@ -186,6 +185,117 @@ td,
 .bars-grid,
 .method-bar-wrap {
     border-color: var(--panel-border);
+}
+
+/* =========================================================
+   FIX TEMA OSCURO - PAGOS INDEX
+========================================================= */
+
+.payments-wrap,
+.payments-header,
+.payments-actions {
+    color: var(--app-text);
+}
+
+.payments-header h1,
+.payments-wrap h1,
+.payments-wrap h2,
+.payments-wrap h3 {
+    color: var(--app-text) !important;
+}
+
+.payments-header p,
+.payments-wrap p {
+    color: var(--app-muted) !important;
+}
+
+.payments-wrap .summary-card,
+.payments-wrap .filters-card,
+.payments-wrap .card {
+    background: var(--panel-bg) !important;
+    color: var(--panel-text) !important;
+    border-color: var(--panel-border) !important;
+}
+
+.payments-wrap .card-head {
+    border-color: var(--panel-border) !important;
+}
+
+.payments-wrap .summary-label,
+.payments-wrap .summary-note,
+.payments-wrap .card-subtitle,
+.payments-wrap td {
+    color: var(--panel-muted) !important;
+}
+
+.payments-wrap .summary-value,
+.payments-wrap .card-title {
+    color: var(--panel-text) !important;
+}
+
+.payments-wrap .input,
+.payments-wrap .select,
+.payments-wrap input,
+.payments-wrap select {
+    background: var(--app-surface-2) !important;
+    color: var(--app-text) !important;
+    border-color: var(--app-border) !important;
+}
+
+.payments-wrap .input::placeholder,
+.payments-wrap input::placeholder {
+    color: var(--app-muted) !important;
+    opacity: 1;
+}
+
+.payments-wrap table {
+    background: var(--panel-bg) !important;
+    color: var(--panel-text) !important;
+}
+
+.payments-wrap th {
+    background: var(--panel-bg-soft) !important;
+    color: var(--panel-muted) !important;
+    border-color: var(--panel-border) !important;
+}
+
+.payments-wrap td {
+    background: transparent !important;
+    border-color: var(--panel-border) !important;
+}
+
+.payments-wrap tbody tr {
+    background: var(--panel-bg) !important;
+}
+
+.payments-wrap tbody tr:hover {
+    background: var(--app-hover) !important;
+}
+
+.payments-wrap .icon-btn {
+    color: var(--app-primary) !important;
+}
+
+.payments-wrap .badge-green {
+    background: var(--success-bg) !important;
+    color: var(--success-text) !important;
+}
+
+.payments-wrap .badge-yellow {
+    background: var(--info-bg) !important;
+    color: var(--info-text) !important;
+    border: 1px solid var(--info-border);
+}
+
+.payments-wrap .badge-red {
+    background: var(--error-bg) !important;
+    color: var(--error-text) !important;
+}
+
+body[data-theme="dark"] .payments-wrap .summary-card,
+body[data-theme="dark"] .payments-wrap .filters-card,
+body[data-theme="dark"] .payments-wrap .card {
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
 }
 
 @media (max-width: 1100px) {

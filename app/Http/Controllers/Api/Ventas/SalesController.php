@@ -4,8 +4,9 @@ namespace App\Http\Controllers\Api\Ventas;
 
 use App\Services\NotificationService;
 use App\Support\CompanyPreference;
-use Illuminate\Http\Request;
 use App\Support\UserAccess;
+use App\Models\Payment;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -65,6 +66,8 @@ class SalesController extends SalesBaseController
             'branch_id' => ['nullable', 'integer', 'exists:branch,branch_id'],
             'search' => ['nullable', 'string', 'max:100'],
             'date' => ['nullable', 'date'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date'],
             'status' => ['nullable', 'in:all,PAGADA,PENDIENTE,CANCELADA'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
@@ -85,8 +88,16 @@ class SalesController extends SalesBaseController
 
         $search = trim($validated['search'] ?? '');
         $date = $validated['date'] ?? null;
+        $dateFrom = $validated['date_from'] ?? null;
+        $dateTo = $validated['date_to'] ?? null;
         $status = $validated['status'] ?? 'all';
         $perPage = (int) ($validated['per_page'] ?? 15);
+
+        if ($dateFrom && $dateTo && $dateFrom > $dateTo) {
+            throw ValidationException::withMessages([
+                'date_to' => ['La fecha final debe ser igual o posterior a la fecha inicio.'],
+            ]);
+        }
 
         $itemsSub = DB::table('saleitem')
             ->select('sale_idfk', DB::raw('COUNT(*) as items_count'))
@@ -110,8 +121,16 @@ class SalesController extends SalesBaseController
                 'p.payment_method',
             ]);
 
-        if ($date) {
+        if ($date && !$dateFrom && !$dateTo) {
             $query->whereDate('s.date_time', $date);
+        }
+
+        if ($dateFrom) {
+            $query->whereDate('s.date_time', '>=', $dateFrom);
+        }
+
+        if ($dateTo) {
+            $query->whereDate('s.date_time', '<=', $dateTo);
         }
 
         if ($status !== 'all') {
@@ -362,6 +381,7 @@ class SalesController extends SalesBaseController
                     'branch_idfk' => $branchId,
                     'cashier_userr_idfk' => $userId,
                     'customer_idfk' => $customer->customer_id,
+                    'payment_method' => $paymentMethod,
                     'subtotal' => $totals['subtotal'],
                     'discount' => $totals['discount'],
                     'total' => $totals['total'],
@@ -403,6 +423,13 @@ class SalesController extends SalesBaseController
                 ];
             });
 
+            app(NotificationService::class)->saleCompleted(
+                companyId: (int) $companyId,
+                branchId: (int) $branchId,
+                saleId: (int) $result['sale_id'],
+                total: (float) $result['total']
+            );
+
             return response()->json([
                 'message' => 'Venta registrada correctamente.',
                 'data' => $this->appendDisplayValues($companyId, $result),
@@ -416,6 +443,32 @@ class SalesController extends SalesBaseController
                 'message' => 'No se pudo registrar la venta.',
             ], 422);
         }
+
+        $venta = Sale::create([
+            'total' => $total,
+            'payment_method' => $request->payment_method,
+        ]);
+
+        // Crear pago
+        $pago = Payment::create([
+            'sale_idfk' => $venta->sale_id,
+            'status_payment' => 'pending',
+            'attempts' => 0,
+            'amount_paid' => $venta->total,
+        ]);
+
+        // Simular si el pago fue exitoso o falló
+        if(rand(0,1)){
+            $pago->status_payment = 'success';
+        } else {
+            $pago->status_payment = 'failed';
+        }
+
+        // 👇 AQUÍ ES TU CÓDIGO
+        $pago->attempts = $pago->attempts + 1;
+
+        // Guardar cambios
+        $pago->save();
     }
 
     public function storePending(Request $request)
@@ -518,6 +571,7 @@ class SalesController extends SalesBaseController
                         ->where('sale_id', $existingSale->sale_id)
                         ->update([
                             'customer_idfk' => $customer->customer_id,
+                            'payment_method' => $paymentMethod,
                             'subtotal' => $totals['subtotal'],
                             'discount' => $totals['discount'],
                             'total' => $totals['total'],
@@ -539,6 +593,7 @@ class SalesController extends SalesBaseController
                         'branch_idfk' => $branchId,
                         'cashier_userr_idfk' => $userId,
                         'customer_idfk' => $customer->customer_id,
+                        'payment_method' => $paymentMethod,
                         'subtotal' => $totals['subtotal'],
                         'discount' => $totals['discount'],
                         'total' => $totals['total'],
@@ -574,6 +629,13 @@ class SalesController extends SalesBaseController
                 ];
             });
 
+            app(NotificationService::class)->salePending(
+                companyId: (int) $companyId,
+                branchId: (int) $branchId,
+                saleId: (int) $result['sale_id'],
+                total: (float) $result['total']
+            );
+
             return response()->json([
                 'message' => 'Venta pendiente guardada correctamente.',
                 'data' => $this->appendDisplayValues($companyId, $result),
@@ -583,8 +645,11 @@ class SalesController extends SalesBaseController
                 throw $e;
             }
 
+            report($e);
+
             return response()->json([
                 'message' => 'No se pudo preparar la venta pendiente.',
+                'error' => $e->getMessage(),
             ], 422);
         }
     }
@@ -685,6 +750,7 @@ class SalesController extends SalesBaseController
                     ->where('sale_id', $id)
                     ->update([
                         'customer_idfk' => $customer->customer_id,
+                        'payment_method' => $paymentMethod,
                         'subtotal' => $totals['subtotal'],
                         'discount' => $totals['discount'],
                         'total' => $totals['total'],
@@ -730,6 +796,13 @@ class SalesController extends SalesBaseController
                     'items' => $this->mapItemsForResponse($processed['items']),
                 ];
             });
+
+            app(NotificationService::class)->saleCompleted(
+                companyId: (int) $companyId,
+                branchId: (int) $branchId,
+                saleId: (int) $result['sale_id'],
+                total: (float) $result['total']
+            );
 
             return response()->json([
                 'message' => 'Venta confirmada correctamente.',
@@ -785,6 +858,14 @@ class SalesController extends SalesBaseController
             ->update([
                 'status_payment' => 'CANCELADO',
             ]);
+
+        app(NotificationService::class)->saleCancelled(
+            companyId: (int) $companyId,
+            branchId: $sale->branch_idfk ? (int) $sale->branch_idfk : null,
+            saleId: (int) $id,
+            total: (float) $sale->total,
+            cancelledBy: auth()->user()->name_user ?? 'Usuario'
+        );
 
         return response()->json([
             'message' => 'Venta cancelada correctamente.',

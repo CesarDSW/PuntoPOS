@@ -66,6 +66,17 @@ class SalesBaseController extends Controller
         }
     }
 
+    protected function authorizeSalesPosUse(): void
+    {
+        $user = auth()->user();
+
+        abort_unless(
+            $user && UserAccess::has($user, 'sales.pos.use'),
+            403,
+            'No tienes permiso para usar el POS.'
+        );
+    }
+
     protected function getAuthenticatedUser()
     {
         $user = Auth::user();

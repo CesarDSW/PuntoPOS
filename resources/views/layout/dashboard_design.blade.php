@@ -8,6 +8,19 @@
 
     @php
         $companyPrefsForJs = \App\Support\CompanyPreference::all(auth()->user()->company_idfk ?? null);
+
+        $userPreferenceForJs = null;
+
+        if (auth()->check()) {
+            $userPreferenceForJs = \App\Models\UserPreference::firstOrCreate(
+                ['userr_idfk' => auth()->user()->userr_id],
+                [
+                    'theme' => 'light',
+                ]
+            );
+
+            $companyPrefsForJs['theme'] = $userPreferenceForJs->theme;
+        }
     @endphp
 
     <script>
@@ -121,11 +134,65 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/2.3.7/js/dataTables.dataTables.js"></script>
 
+    <link rel="stylesheet" href="{{ asset('css/theme-colors.css') }}">
     <link rel="stylesheet" href="{{ asset('css/layout/dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/components/topbar.css') }}">
     @stack('styles')
 </head>
-<body data-theme-preference="{{ $uiPreferences['theme'] ?? 'light' }}">
+
+@php
+    $authUserForTheme = auth()->user();
+    $companyIdForTheme = $authUserForTheme->company_idfk ?? null;
+
+    $prefsForTheme = \App\Support\CompanyPreference::all($companyIdForTheme);
+
+    $userPreferenceForTheme = null;
+
+    if ($authUserForTheme) {
+        $userPreferenceForTheme = \App\Models\UserPreference::firstOrCreate(
+            ['userr_idfk' => $authUserForTheme->userr_id],
+            [
+                'theme' => 'light',
+            ]
+        );
+    }
+
+    $themePreference =
+        $userPreferenceForTheme->theme ??
+        session('theme', 'light');
+
+    if (! in_array($themePreference, ['light', 'dark', 'auto'])) {
+        $themePreference = 'light';
+    }
+
+    $resolvedTheme = $themePreference === 'auto' ? 'light' : $themePreference;
+@endphp
+
+<body
+    data-theme="{{ $resolvedTheme }}"
+    data-theme-preference="{{ $themePreference }}"
+>
+
+    <div id="page-loader" class="page-loader">
+        <div class="loader-card">
+            <div class="loader-orbit">
+                <div class="loader-core">P</div>
+                <span class="orbit-dot dot-one"></span>
+                <span class="orbit-dot dot-two"></span>
+                <span class="orbit-dot dot-three"></span>
+            </div>
+
+            <h3>Cargando sistema</h3>
+
+            <p>
+                Preparando información
+                <span class="loading-dots">
+                    <span>.</span><span>.</span><span>.</span>
+                </span>
+            </p>
+        </div>
+    </div>  
+
     <div class="app-shell">
         @include('partials.sidebar')
 
@@ -141,17 +208,24 @@
     <script>
         (function () {
             const body = document.body;
-            const preference = body.dataset.themePreference || 'light';
+            const root = document.documentElement;
+            const preference = body.dataset.themePreference || body.dataset.theme || 'light';
             const media = window.matchMedia('(prefers-color-scheme: dark)');
 
-            function applyTheme() {
-                let resolved = preference;
-
+            function resolveTheme() {
                 if (preference === 'auto') {
-                    resolved = media.matches ? 'dark' : 'light';
+                    return media.matches ? 'dark' : 'light';
                 }
 
+                return preference === 'dark' ? 'dark' : 'light';
+            }
+
+            function applyTheme() {
+                const resolved = resolveTheme();
+
+                root.setAttribute('data-theme', resolved);
                 body.setAttribute('data-theme', resolved);
+                body.setAttribute('data-theme-preference', preference);
             }
 
             applyTheme();
@@ -224,7 +298,87 @@
 
             updateProgress();
         });
+    
     </script>
+    
+    <script>
+        (function () {
+            const loader = document.getElementById('page-loader');
+
+            function showLoader() {
+                if (loader) {
+                    loader.classList.remove('hidden');
+                }
+            }
+
+            function hideLoader() {
+                if (loader) {
+                    loader.classList.add('hidden');
+                }
+            }
+
+            window.showPageLoader = showLoader;
+            window.hidePageLoader = hideLoader;
+
+            window.addEventListener('load', hideLoader);
+
+            setTimeout(hideLoader, 900);
+
+            document.addEventListener('click', function (event) {
+                const link = event.target.closest('a[href]');
+
+                if (!link) {
+                    return;
+                }
+
+                const href = link.getAttribute('href');
+
+                if (
+                    !href ||
+                    href.startsWith('#') ||
+                    href.startsWith('javascript:') ||
+                    href.startsWith('mailto:') ||
+                    href.startsWith('tel:') ||
+                    link.target === '_blank' ||
+                    link.hasAttribute('download') ||
+                    link.dataset.noLoader === 'true' ||
+                    link.classList.contains('no-global-loader')
+                ) {
+                    return;
+                }
+
+                const url = new URL(href, window.location.href);
+
+                if (url.origin !== window.location.origin) {
+                    return;
+                }
+
+                showLoader();
+            });
+
+            document.addEventListener('submit', function (event) {
+                const form = event.target;
+
+                if (
+                    form.dataset.noLoader === 'true' ||
+                    form.classList.contains('no-global-loader') ||
+                    form.id === 'replySupportForm'
+                ) {
+                    return;
+                }
+
+                showLoader();
+            });
+
+            document.addEventListener('fetch-start', function () {
+                hideLoader();
+            });
+
+            window.addEventListener('pageshow', hideLoader);
+        })();
+    </script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     @stack('scripts')
 </body>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Permission;
 use App\Models\User;
+use App\Models\UserPreference;
 use App\Support\UserAccess;
 use App\Models\Rol;
 use App\Models\Company;
@@ -96,8 +97,14 @@ class SettingsController extends Controller
                 'auto_print' => true,
                 'show_taxes' => true,
                 'printer_width' => '80mm',
-                'theme' => 'light',
                 'price_decimals' => '2',
+            ]
+        );
+
+        $userPreference = UserPreference::firstOrCreate(
+            ['userr_idfk' => $authUser->userr_id],
+            [
+                'theme' => 'light',
             ]
         );
 
@@ -116,6 +123,7 @@ class SettingsController extends Controller
             'roles' => $roles,
             'users' => $users,
             'settings' => $settings,
+            'userPreference' => $userPreference,
             'branches' => $branches,
             'branchCards' => $branchCards,
             'currentRoleName' => $currentRoleName,
@@ -534,20 +542,32 @@ class SettingsController extends Controller
 
     public function updateNotifications(Request $request)
     {
-        $authUser = Auth::user();
+        $user = auth()->user();
 
-        $settings = CompanySettings::firstOrCreate([
-            'company_idfk' => $authUser->company_idfk
-        ]);
+        $settings = CompanySettings::firstOrCreate(
+            [
+                'company_idfk' => $user->company_idfk,
+            ],
+            [
+                'notify_low_stock' => true,
+                'notify_out_of_stock' => true,
+                'notify_sale_cancelled' => true,
+                'notify_sale_pending' => true,
+                'notify_sale_completed' => true,
+            ]
+        );
 
         $settings->update([
             'notify_low_stock' => $request->has('notify_low_stock'),
-            'notify_sale_cancelled' => $request->has('notify_sale_cancelled'),
             'notify_out_of_stock' => $request->has('notify_out_of_stock'),
+            'notify_sale_cancelled' => $request->has('notify_sale_cancelled'),
+            'notify_sale_pending' => $request->has('notify_sale_pending'),
+            'notify_sale_completed' => $request->has('notify_sale_completed'),
         ]);
 
-        return redirect()->route('settings', ['tab' => 'notificaciones'])
-            ->with('success', 'Notificaciones actualizadas correctamente.');
+        return redirect()
+            ->route('settings', ['tab' => 'notificaciones'])
+            ->with('success', 'Configuración de notificaciones actualizada correctamente.');
     }
 
     public function notificationsList()
@@ -581,7 +601,8 @@ class SettingsController extends Controller
             'theme' => ['required', 'string', Rule::in(['light', 'dark', 'auto'])],
         ]);
 
-        $companyId = (int) auth()->user()->company_idfk;
+        $user = auth()->user();
+        $companyId = (int) $user->company_idfk;
 
         $settings = CompanySettings::firstOrCreate(
             ['company_idfk' => $companyId],
@@ -595,7 +616,6 @@ class SettingsController extends Controller
                 'auto_print' => true,
                 'show_taxes' => true,
                 'printer_width' => '80mm',
-                'theme' => 'light',
                 'price_decimals' => '2',
             ]
         );
@@ -605,10 +625,16 @@ class SettingsController extends Controller
         $settings->time_format = $validated['time_format'];
         $settings->price_decimals = $validated['price_decimals'];
         $settings->printer_width = $validated['printer_width'];
-        $settings->theme = $validated['theme'];
         $settings->auto_print = $request->boolean('auto_print');
         $settings->show_taxes = $request->boolean('show_taxes');
         $settings->save();
+
+        UserPreference::updateOrCreate(
+            ['userr_idfk' => $user->userr_id],
+            [
+                'theme' => $validated['theme'],
+            ]
+        );
 
         return redirect()
             ->route('settings', ['tab' => 'preferencias'])
@@ -617,7 +643,8 @@ class SettingsController extends Controller
 
     public function resetPreferences()
     {
-        $companyId = (int) auth()->user()->company_idfk;
+        $user = auth()->user();
+        $companyId = (int) $user->company_idfk;
 
         $settings = CompanySettings::firstOrCreate(
             ['company_idfk' => $companyId],
@@ -631,7 +658,6 @@ class SettingsController extends Controller
                 'auto_print' => true,
                 'show_taxes' => true,
                 'printer_width' => '80mm',
-                'theme' => 'light',
                 'price_decimals' => '2',
             ]
         );
@@ -641,11 +667,17 @@ class SettingsController extends Controller
         $settings->time_format = 'H:i';
         $settings->price_decimals = '2';
         $settings->printer_width = '80mm';
-        $settings->theme = 'light';
         $settings->auto_print = true;
         $settings->show_taxes = true;
         $settings->save();
-         
+
+        UserPreference::updateOrCreate(
+            ['userr_idfk' => $user->userr_id],
+            [
+                'theme' => 'light',
+            ]
+        );
+
         return redirect()
             ->route('settings', ['tab' => 'preferencias'])
             ->with('success', 'Preferencias restablecidas correctamente.');

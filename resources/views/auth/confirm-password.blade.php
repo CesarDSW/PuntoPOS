@@ -1,25 +1,64 @@
 @extends('layout.auth_design')
 
 @section('content')
-    <h1 class="auth-title">Confirmar contraseña</h1>
-    <p class="auth-subtittle">Por seguridad, confirma tu contraseña para continuar</p>
+    <div class="auth-modal-page">
+        <div class="auth-modal-card">
+            <div class="modal-top">
+                <div>
+                    <h1 class="login-title modal-title-left">Confirmar contraseña</h1>
+                    <p class="login-subtittle modal-subtitle-left">
+                        Por seguridad, confirma tu contraseña para continuar
+                    </p>
+                </div>
 
-    @if($errors->any())
-        <div class="error-box">
-            @foreach($errors->all() as $error)
-                <div>{{ $error }}</div>
-            @endforeach
+                <a href="{{ url() ->previous()}}" class="modal-close-btn" aria-label="Cerrar">
+                    &times;
+                </a>
+            </div>
+
+            <div class="info-box-auth">
+                Esta validación protege cambios sensibles, como la activación de la verificación en dos pasos. 
+            </div>
+
+            @if($errors->any())
+                <div class="error-box">
+                    @foreach($errors->all() as $error)
+                        <div>{{ $error }}</div>
+                    @endforeach
+                </div>
+            @endif
+
+            <form method="POST" action="/user/confirm-password">
+                @csrf
+
+                <div class="input-group">
+                    <label for="password" class="input-label">Contraseña</label>
+                    <input 
+                        id="password"
+                        type="password" 
+                        name="password" 
+                        class="form-input" 
+                        placeholder="Escribe tu contraseña"
+                        autocomplete="current-password"
+                        required
+                        autofocus
+                    >
+                </div>
+
+                <div class="note-box-auth">
+                    Debes ingresar tu contraseña actual para continuar con el proceso de seguridad. 
+                </div>
+
+                <div class="modal-actions">
+                    <a href="{{ url() ->previous()}}" class="btn-secondary-auth">
+                        Cancelar
+                    </a>
+
+                    <button type="submit" class="btn-primary-auth">
+                        Confirmar
+                    </button>
+                </div>
+            </form>
         </div>
-    @endif
-
-    <form method="POST" action="/user/confirm-password">
-        @csrf
-
-        <div class="form-group">
-            <label class="form-label">Contraseña</label>
-            <input type="password" name="password" class="form-input" required>
-        </div>
-
-        <button type="submit" class="auth-button">Confirmar</button>
-    </form>
+    </div>
 @endsection

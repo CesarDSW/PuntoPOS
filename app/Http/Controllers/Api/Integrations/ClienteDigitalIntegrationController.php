@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Integrations;
 use App\Http\Controllers\Controller;
 use App\Models\ExternalIntegration;
 use App\Models\ExternalSyncMap;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +30,50 @@ class ClienteDigitalIntegrationController extends Controller
         ]);
     }
 
+    public function status(Request $request)
+    {
+        $user = auth()->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Usuario no autenticado.',
+                'data' => null,
+            ], 401);
+        }
+
+        $integration = ExternalIntegration::query()
+            ->where('source_app', 'clientedigital')
+            ->where('company_idfk', $user->company_idfk)
+            ->where('status', 'active')
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$integration) {
+            return response()->json([
+                'success' => true,
+                'message' => 'No hay integración activa con ClienteDigital.',
+                'data' => [
+                    'integration_id' => null,
+                    'status' => 'inactive',
+                    'external_base_url' => null,
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Integración activa.',
+            'data' => [
+                'integration_id' => $integration->id,
+                'status' => $integration->status,
+                'external_base_url' => $integration->external_base_url,
+                'last_products_sync_at' => optional($integration->last_products_sync_at)->format('Y-m-d H:i:s'),
+                'last_sales_sync_at' => optional($integration->last_sales_sync_at)->format('Y-m-d H:i:s'),
+            ],
+        ]);
+    }
+
     /**
      * Conecta Punto con ClienteDigital usando el código generado en ClienteDigital.
      *
@@ -43,25 +88,40 @@ class ClienteDigitalIntegrationController extends Controller
      */
     public function connect(Request $request)
     {
+        $user = auth()->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Usuario no autenticado.',
+            ], 401);
+        }
+
         $validated = $request->validate([
-            'external_base_url' => ['required', 'string', 'max:255'],
-            'integration_code' => ['required', 'string', 'max:80'],
-            'company_idfk' => ['required', 'integer'],
-            'branch_idfk' => ['nullable', 'integer'],
-            'userr_idfk' => ['nullable', 'integer'],
+            'base_url' => ['required', 'string', 'max:255'],
+            'code' => ['required', 'string', 'max:80'],
         ]);
 
-        $baseUrl = $this->normalizeBaseUrl($validated['external_base_url']);
+        $baseUrl = $this->normalizeBaseUrl($validated['base_url']);
+
+        $companyId = (int) $user->company_idfk;
+
+        $branchId = session('selected_branch_id')
+            ?? session('current_branch_id')
+            ?? session('branch_id')
+            ?? DB::table('user_branch')
+                ->where('userr_idfk', $user->userr_id)
+                ->value('sucursal_idfk');
 
         try {
             $response = Http::acceptJson()
                 ->asJson()
                 ->timeout(15)
                 ->post($baseUrl . '/punto_validate_code', [
-                    'code' => $validated['integration_code'],
-                    'punto_company_id' => (int) $validated['company_idfk'],
-                    'punto_branch_id' => isset($validated['branch_idfk']) ? (int) $validated['branch_idfk'] : null,
-                    'punto_user_id' => isset($validated['userr_idfk']) ? (int) $validated['userr_idfk'] : null,
+                    'code' => $validated['code'],
+                    'punto_company_id' => $companyId,
+                    'punto_branch_id' => $branchId ? (int) $branchId : null,
+                    'punto_user_id' => (int) $user->userr_id,
                 ]);
         } catch (Throwable $exception) {
             return response()->json([
@@ -96,12 +156,12 @@ class ClienteDigitalIntegrationController extends Controller
         $integration = ExternalIntegration::updateOrCreate(
             [
                 'source_app' => 'clientedigital',
-                'company_idfk' => (int) $validated['company_idfk'],
+                'company_idfk' => $companyId,
                 'external_user_id' => (int) $externalUserId,
             ],
             [
-                'branch_idfk' => isset($validated['branch_idfk']) ? (int) $validated['branch_idfk'] : null,
-                'userr_idfk' => isset($validated['userr_idfk']) ? (int) $validated['userr_idfk'] : null,
+                'branch_idfk' => $branchId ? (int) $branchId : null,
+                'userr_idfk' => (int) $user->userr_id,
                 'external_base_url' => $baseUrl,
                 'access_token' => $accessToken,
                 'status' => 'active',
@@ -211,6 +271,11 @@ class ClienteDigitalIntegrationController extends Controller
         $integration->update([
             'last_products_sync_at' => now(),
         ]);
+
+        app(NotificationService::class)->syncCurrentInventoryStatus(
+            companyId: (int) $integration->company_idfk,
+            branchId: (int) $integration->branch_idfk
+        );
 
         return response()->json([
             'success' => true,
@@ -504,6 +569,59 @@ class ClienteDigitalIntegrationController extends Controller
         ], 'category_id');
     }
 
+    private function makeServiceCode($rawCode, string $externalId, int $companyId): string
+    {
+        $raw = strtoupper(trim((string) $rawCode));
+
+        if ($raw === '') {
+            $raw = 'CD-S-' . $externalId;
+        }
+
+        $raw = preg_replace('/[^A-Z0-9\-]/', '', $raw);
+
+        if ($raw === '') {
+            $raw = 'CD-S-' . $externalId;
+        }
+
+        $candidate = $this->limitText($raw, 15);
+
+        $exists = DB::table('servicee')
+            ->where('company_idfk', $companyId)
+            ->where('code_service', $candidate)
+            ->exists();
+
+        if (!$exists) {
+            return $candidate;
+        }
+
+        $fallback = $this->limitText('CD-S-' . $externalId, 15);
+
+        $existsFallback = DB::table('servicee')
+            ->where('company_idfk', $companyId)
+            ->where('code_service', $fallback)
+            ->exists();
+
+        if (!$existsFallback) {
+            return $fallback;
+        }
+
+        for ($i = 1; $i <= 99; $i++) {
+            $hash = strtoupper(substr(md5($externalId . '-service-' . $i), 0, 6));
+            $candidate = $this->limitText('CD-S-' . $hash, 15);
+
+            $existsCandidate = DB::table('servicee')
+                ->where('company_idfk', $companyId)
+                ->where('code_service', $candidate)
+                ->exists();
+
+            if (!$existsCandidate) {
+                return $candidate;
+            }
+        }
+
+        return $this->limitText('CD-S-' . Str::random(6), 15);
+    }
+
     /**
      * Genera código compatible con productt.code_product.
      * En Punto el código máximo es de 15 caracteres.
@@ -607,7 +725,7 @@ class ClienteDigitalIntegrationController extends Controller
                 throw new  \RuntimeException('La venta externa no tiene productos en items.');
             }
             
-             $customerId = $this->resolveIntegrationCustomer($integration);
+            $customerId = $this->resolveIntegrationCustomer($integration);
 
             $subtotal = (float) data_get($externalSale, 'subtotal', 0);
             $discountFixed = (float) data_get($externalSale, 'discount_fixed', 0);
@@ -622,6 +740,7 @@ class ClienteDigitalIntegrationController extends Controller
             $total = (float) data_get($externalSale, 'total', 0);
             $dateTime = $this->normalizeSaleDateTime(data_get($externalSale, 'sold_at'));
             $statusSale = $this->mapSaleStatus(data_get($externalSale, 'status'));
+            $paymentMethod = $this->mapPaymentMethod(data_get($externalSale, 'payment_method'));
 
             $saleId = DB::table('sale')->insertGetId([
                 'date_time' => $dateTime,
@@ -632,13 +751,14 @@ class ClienteDigitalIntegrationController extends Controller
                 'subtotal' => $subtotal,
                 'discount' => $discount,
                 'total' => $total,
+                'payment_method' => $paymentMethod,
                 'status_sale' => $statusSale,
             ], 'sale_id');
 
             $createdItems = 0;
 
             foreach ($items as $item) {
-                $itemStatus = (int) data_get($item, 'status', 1);
+                $itemStatus = $this->normalizeExternalItemStatus(data_get($item, 'status', 1));
 
                 if (!$itemStatus) {
                     continue;
@@ -652,47 +772,66 @@ class ClienteDigitalIntegrationController extends Controller
 
                 $type = strtoupper(trim((string) $itemTypeValue));
 
-                if ($type !== 'PRODUCTO') {
-                    throw new \RuntimeException('Por ahora solo se importan productos. Tipo recibido: ' . $type);
+                if (in_array($type, ['PRODUCT', 'PRODUCTO', 'PRODUCTOS'], true)) {
+                    $type = 'PRODUCTO';
                 }
 
-                $externalProductId = (string) data_get($item, 'external_product_id');
-
-                if ($externalProductId === '') {
-                    throw new \RuntimeException('Un detalle de venta no tiene external_product_id.');
-                }
-
-                $productMap = ExternalSyncMap::query()
-                    ->where('external_integration_id', $integration->id)
-                    ->where('entity_type', 'product')
-                    ->where('external_id', $externalProductId)
-                    ->first();
-
-                if (!$productMap) {
-                    throw new \RuntimeException(
-                        'El producto externo ' . $externalProductId . ' no está sincronizado. Sincroniza productos primero.'
-                    );
-                }
-
-                $localProduct = DB::table('productt')
-                    ->where('product_id', $productMap->local_id)
-                    ->first();
-
-                if (!$localProduct) {
-                    throw new \RuntimeException(
-                        'El producto local relacionado al externo ' . $externalProductId . ' ya no existe.'
-                    );
+                if (in_array($type, ['SERVICE', 'SERVICIO', 'SERVICIOS'], true)) {
+                    $type = 'SERVICIO';
                 }
 
                 $quantity = max(1, (int) data_get($item, 'quantity', 1));
                 $unitPrice = (float) data_get($item, 'unit_price', 0);
                 $totalLine = (float) data_get($item, 'total_line', $quantity * $unitPrice);
 
+                $productId = null;
+                $serviceId = null;
+
+                if ($type === 'PRODUCTO') {
+                    $externalProductId = (string) data_get($item, 'external_product_id');
+
+                    if ($externalProductId === '') {
+                        throw new \RuntimeException('Un detalle de venta no tiene external_product_id.');
+                    }
+
+                    $productMap = ExternalSyncMap::query()
+                        ->where('external_integration_id', $integration->id)
+                        ->where('entity_type', 'product')
+                        ->where('external_id', $externalProductId)
+                        ->first();
+
+                    if (!$productMap) {
+                        throw new \RuntimeException(
+                            'El producto externo ' . $externalProductId . ' no está sincronizado. Sincroniza productos primero.'
+                        );
+                    }
+
+                    $localProduct = DB::table('productt')
+                        ->where('product_id', $productMap->local_id)
+                        ->first();
+
+                    if (!$localProduct) {
+                        throw new \RuntimeException(
+                            'El producto local relacionado al externo ' . $externalProductId . ' ya no existe.'
+                        );
+                    }
+
+                    $productId = (int) $productMap->local_id;
+                }
+
+                if ($type === 'SERVICIO') {
+                    $serviceId = $this->resolveExternalServiceForSale($integration, $item);
+                }
+
+                if (!in_array($type, ['PRODUCTO', 'SERVICIO'], true)) {
+                    throw new \RuntimeException('Tipo de detalle no soportado: ' . $type);
+                }
+
                 $saleItemId = DB::table('saleitem')->insertGetId([
                     'sale_idfk' => $saleId,
-                    'item_type' => 'PRODUCTO',
-                    'product_idfk' => (int) $productMap->local_id,
-                    'service_idfk' => null,
+                    'item_type' => $type,
+                    'product_idfk' => $productId,
+                    'service_idfk' => $serviceId,
                     'amount' => $quantity,
                     'unit_price' => $unitPrice,
                     'discount' => 0,
@@ -722,7 +861,7 @@ class ClienteDigitalIntegrationController extends Controller
 
             DB::table('payments')->insert([
                 'date_time' => $dateTime,
-                'payment_method' => $this->mapPaymentMethod(data_get($externalSale, 'payment_method')),
+                'payment_method' => $paymentMethod,
                 'status_payment' => $statusSale === 'PAGADA' ? 'PAGADO' : $statusSale,
                 'commission' => 0,
                 'sale_idfk' => $saleId,
@@ -755,6 +894,101 @@ class ClienteDigitalIntegrationController extends Controller
                 'total' => $total,
             ];
         });
+    }
+
+    private function resolveExternalServiceForSale(ExternalIntegration $integration, array $item): int
+    {
+        $externalServiceId = (string) (
+            data_get($item, 'external_service_id')
+            ?: data_get($item, 'external_product_id')
+            ?: data_get($item, 'external_id')
+        );
+
+        if ($externalServiceId === '') {
+            throw new \RuntimeException('Un detalle de servicio no tiene external_service_id.');
+        }
+
+        $serviceMap = ExternalSyncMap::query()
+            ->where('external_integration_id', $integration->id)
+            ->where('entity_type', 'service')
+            ->where('external_id', $externalServiceId)
+            ->first();
+
+        if ($serviceMap) {
+            $existingService = DB::table('servicee')
+                ->where('service_id', $serviceMap->local_id)
+                ->first();
+
+            if ($existingService) {
+                return (int) $serviceMap->local_id;
+            }
+
+            $serviceMap->delete();
+        }
+
+        $serviceName = $this->limitText(
+            data_get($item, 'name')
+            ?: data_get($item, 'description')
+            ?: data_get($item, 'product_name')
+            ?: 'Servicio ClienteDigital ' . $externalServiceId,
+            80
+        );
+
+        $serviceDescription = $this->limitText(
+            data_get($item, 'description')
+            ?: 'Servicio importado desde ClienteDigital',
+            250
+        );
+
+        $servicePrice = (float) data_get($item, 'unit_price', 0);
+
+        $categoryId = $this->resolveProductCategory('Servicios');
+
+        $serviceData = [
+            'name_service' => $serviceName,
+            'description_service' => $serviceDescription,
+            'price' => $servicePrice,
+            'status_service' => 1,
+            'company_idfk' => (int) $integration->company_idfk,
+            'category_idfk' => $categoryId,
+        ];
+
+        $code = $this->makeServiceCode(
+            data_get($item, 'code'),
+            $externalServiceId,
+            (int) $integration->company_idfk
+        );
+
+        $existingServiceByCode = DB::table('servicee')
+            ->where('company_idfk', (int) $integration->company_idfk)
+            ->where('code_service', $code)
+            ->first();
+
+        if ($existingServiceByCode) {
+            DB::table('servicee')
+                ->where('service_id', $existingServiceByCode->service_id)
+                ->update($serviceData);
+
+            $serviceId = (int) $existingServiceByCode->service_id;
+        } else {
+            $serviceData['code_service'] = $code;
+
+            $serviceId = DB::table('servicee')->insertGetId($serviceData, 'service_id');
+        }
+
+        ExternalSyncMap::updateOrCreate(
+            [
+                'external_integration_id' => $integration->id,
+                'entity_type' => 'service',
+                'external_id' => $externalServiceId,
+            ],
+            [
+                'local_table' => 'servicee',
+                'local_id' => $serviceId,
+            ]
+        );
+
+        return $serviceId;
     }
 
     /**
@@ -819,13 +1053,49 @@ class ClienteDigitalIntegrationController extends Controller
         return 'PAGADA';
     }
 
+    private function normalizeExternalItemStatus($status): bool
+    {
+        if (is_bool($status)) {
+            return $status;
+        }
+
+        if (is_numeric($status)) {
+            return (int) $status === 1;
+        }
+
+        $status = strtolower(trim((string) $status));
+
+        if ($status === '') {
+            return true;
+        }
+
+        return in_array($status, [
+            '1',
+            'active',
+            'activo',
+            'enabled',
+            'habilitado',
+            'valid',
+            'valido',
+            'válido',
+            'paid',
+            'pagado',
+            'completed',
+            'completado',
+            'vendido',
+        ], true);
+    }
+
     /**
      * Convierte forma de pago externa a forma de pago de Punto.
      */
     private function mapPaymentMethod($paymentMethod): string
     {
         if (is_array($paymentMethod)) {
-            $paymentMethod = $paymentMethod['name'] ?? $paymentMethod['method'] ?? $paymentMethod['value'] ?? reset($paymentMethod);
+            $paymentMethod = $paymentMethod['name']
+                ?? $paymentMethod['method']
+                ?? $paymentMethod['value']
+                ?? reset($paymentMethod);
         }
 
         $paymentMethod = strtoupper(trim((string) $paymentMethod));
@@ -834,19 +1104,13 @@ class ClienteDigitalIntegrationController extends Controller
             return 'EFECTIVO';
         }
 
-        if (in_array($paymentMethod, ['CASH', 'EFECTIVO', 'CONTADO'], true)) {
-            return 'EFECTIVO';
-        }
-
-        if (in_array($paymentMethod, ['CARD', 'TARJETA', 'DEBITO', 'DÉBITO', 'CREDITO', 'CRÉDITO'], true)) {
-            return 'TARJETA';
-        }
-
-        if (in_array($paymentMethod, ['TRANSFER', 'TRANSFERENCIA'], true)) {
-            return 'TRANSFERENCIA';
-        }
-
-        return $this->limitText($paymentMethod, 70);
+        return match ($paymentMethod) {
+            '1', 'CASH', 'EFECTIVO', 'CONTADO', 'DINERO' => 'EFECTIVO',
+            '2', 'CARD', 'TARJETA', 'TARJETA DE CREDITO', 'TARJETA DE CRÉDITO', 'DEBITO', 'DÉBITO', 'CREDITO', 'CRÉDITO' => 'TARJETA',
+            '3', 'TRANSFER', 'TRANSFERENCIA', 'SPEI', 'TRANSFERENCIA BANCARIA' => 'TRANSFERENCIA',
+            '4', 'CHEQUE', 'VALE', 'VALES', 'VALES DE DESPENSA' => 'CHEQUE',
+            default => $this->limitText($paymentMethod, 70),
+        };
     }
 
     private function normalizeBaseUrl(string $url): string

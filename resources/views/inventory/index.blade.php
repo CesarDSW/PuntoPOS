@@ -16,6 +16,7 @@
     ];
 @endphp
 
+
 <div class="inventory-wrap">
     <div class="inventory-header">
         <div>
@@ -34,7 +35,7 @@
         </div>
     </div>
 
-    <div id="lowStockAlert"></div>
+    <div id="inventoryStockAlerts"></div>
 
     <div class="summary-grid">
         <div class="summary-card">
@@ -131,7 +132,8 @@
 
             <div class="field-group" id="singleReasonOtherWrap" style="display:none;">
                 <label class="field-label">Escribe el motivo</label>
-                <input type="text" id="singleReasonOther" class="input" placeholder="Escribe el motivo">
+                <input type="text" id="singleReasonOther" class="input" maxlength="30" placeholder="Máximo 30 caracteres">
+                <small class="text-muted" id="singleReasonCounter" style="display:block; margin-top:4px;">0/30 caracteres</small>
             </div>
 
             <div class="error-box" id="singleErrorBox"></div>
@@ -205,7 +207,8 @@
 
             <div class="field-group" id="bulkReasonOtherWrap" style="display:none;">
                 <label class="field-label">Escribe el motivo</label>
-                <input type="text" id="bulkReasonOther" class="input" placeholder="Escribe el motivo">
+                <input type="text" id="bulkReasonOther" class="input" maxlength="30" placeholder="Máximo 30 caracteres">
+                <small class="text-muted" id="bulkReasonCounter" style="display:block; margin-top:4px;">0/30 caracteres</small>
             </div>
 
             <div class="field-group">
@@ -229,6 +232,7 @@
 
 <script>
     const inventoryAccess = @json($inventoryAccess);
+    const REASON_MAX_LENGTH = 30;
 
     let inventoryItems = [];
     let selectedProduct = null;
@@ -248,6 +252,22 @@
         const box = document.getElementById(boxId);
         box.textContent = '';
         box.style.display = 'none';
+    }
+
+    function updateReasonCounter(inputId, counterId) {
+        const input = document.getElementById(inputId);
+        const counter = document.getElementById(counterId);
+
+        if (!input || !counter) {
+            return;
+        }
+
+        const length = input.value.length;
+        counter.textContent = `${length}/${REASON_MAX_LENGTH} caracteres`;
+
+        if (length >= REASON_MAX_LENGTH) {
+            counter.textContent = `${length}/${REASON_MAX_LENGTH} caracteres. Llegaste al límite permitido.`;
+        }
     }
 
     async function apiFetch(url, options = {}) {
@@ -292,29 +312,65 @@
     }
 
     async function loadLowStockAlert() {
-        const { response, data } = await apiFetch('/api/inventory/low-stock?limit=5');
-        const container = document.getElementById('lowStockAlert');
+        const container = document.getElementById('inventoryStockAlerts');
+
+        if (!container) {
+            return;
+        }
+
+        const { response, data } = await apiFetch('/api/inventory/low-stock?limit=20');
 
         if (!response.ok || !Array.isArray(data) || data.length === 0) {
             container.innerHTML = '';
             return;
         }
 
-        const items = data.map(item => `
-            <li>${item.name_product}: ${item.stocks} unidades (mínimo: ${item.minimum_stock})</li>
-        `).join('');
+        const outOfStockProducts = data.filter(item => Number(item.stocks || 0) <= 0);
 
-        container.innerHTML = `
-            <div class="alert-box">
-                <div style="font-weight:bold; margin-bottom:8px;">Stock bajo detectado</div>
-                <div class="text-muted" style="margin-bottom:8px;">
-                    ${data.length} producto(s) con stock por debajo del mínimo
+        const lowStockProducts = data.filter(item => {
+            const stock = Number(item.stocks || 0);
+            const minimum = Number(item.minimum_stock || 0);
+
+            return stock > 0 && minimum > 0 && stock <= minimum;
+        });
+
+        let html = '';
+
+        if (outOfStockProducts.length > 0) {
+            const items = outOfStockProducts.map(item => `
+                <li>${item.name_product}: ${item.stocks} unidades</li>
+            `).join('');
+
+            html += `
+                <div class="inventory-alert-section">
+                    <strong>Producto agotado detectado</strong>
+                    <p>${outOfStockProducts.length} producto(s) sin existencias.</p>
+                    <ul>
+                        ${items}
+                    </ul>
                 </div>
-                <ul style="padding-left:18px; display:flex; flex-direction:column; gap:4px;">
-                    ${items}
-                </ul>
-            </div>
-        `;
+            `;
+        }
+
+        if (lowStockProducts.length > 0) {
+            const items = lowStockProducts.map(item => `
+                <li>${item.name_product}: ${item.stocks} unidades (mínimo: ${item.minimum_stock})</li>
+            `).join('');
+
+            html += `
+                <div class="inventory-alert-section">
+                    <strong>Stock bajo detectado</strong>
+                    <p>${lowStockProducts.length} producto(s) con stock por debajo del mínimo.</p>
+                    <ul>
+                        ${items}
+                    </ul>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html
+            ? `<div class="inventory-alert-card">${html}</div>`
+            : '';
     }
 
     async function loadInventoryTable() {
@@ -386,7 +442,7 @@
             loadInventoryTable()
         ]);
     }
-
+    
     async function loadReasonOptions(type, selectId, wrapId, inputId) {
         const { response, data } = await apiFetch(`/api/inventory/reasons?type=${encodeURIComponent(type)}`);
         if (!response.ok) return;
@@ -406,12 +462,22 @@
 
         if (input) input.value = '';
         wrap.style.display = select.value === 'Otro' ? 'block' : 'none';
+
+        updateReasonCounter(inputId, inputId === 'singleReasonOther' ? 'singleReasonCounter' : 'bulkReasonCounter');
     }
 
     function toggleOtherReason(selectId, wrapId) {
         const select = document.getElementById(selectId);
         const wrap = document.getElementById(wrapId);
         wrap.style.display = select.value === 'Otro' ? 'block' : 'none';
+
+        if (selectId === 'singleReasonSelect') {
+            updateReasonCounter('singleReasonOther', 'singleReasonCounter');
+        }
+
+        if (selectId === 'bulkReasonSelect') {
+            updateReasonCounter('bulkReasonOther', 'bulkReasonCounter');
+        }
     }
 
     async function openSingleAdjustModal(productId) {
@@ -434,6 +500,7 @@
         document.getElementById('singleCurrentStock').textContent = `${data.current_stock} unidades`;
         document.getElementById('singleQuantity').value = '';
         document.getElementById('singleReasonOther').value = '';
+        updateReasonCounter('singleReasonOther', 'singleReasonCounter');
         document.getElementById('singleType').value = 'ENTRADA';
 
         await loadReasonOptions('ENTRADA', 'singleReasonSelect', 'singleReasonOtherWrap', 'singleReasonOther');
@@ -473,6 +540,11 @@
 
         if (!reason) {
             showError('singleErrorBox', 'Selecciona o escribe un motivo.');
+            return;
+        }
+
+        if (reason.length > REASON_MAX_LENGTH) {
+            showError('singleErrorBox', `El motivo no debe superar los ${REASON_MAX_LENGTH} caracteres.`);
             return;
         }
 
@@ -588,6 +660,7 @@
         hideError('bulkErrorBox');
         document.getElementById('bulkType').value = 'ENTRADA';
         document.getElementById('bulkReasonOther').value = '';
+        updateReasonCounter('bulkReasonOther', 'bulkReasonCounter');
         document.getElementById('bulkSearch').value = '';
 
         await loadReasonOptions('ENTRADA', 'bulkReasonSelect', 'bulkReasonOtherWrap', 'bulkReasonOther');
@@ -683,6 +756,11 @@
             return;
         }
 
+        if (reason.length > REASON_MAX_LENGTH) {
+            showError('bulkErrorBox', `El motivo no debe superar los ${REASON_MAX_LENGTH} caracteres.`);
+            return;
+        }
+
         if (items.length === 0) {
             showError('bulkErrorBox', 'Debes capturar al menos un producto.');
             return;
@@ -742,12 +820,20 @@
             toggleOtherReason('singleReasonSelect', 'singleReasonOtherWrap');
         });
 
+        document.getElementById('singleReasonOther').addEventListener('input', function () {
+            updateReasonCounter('singleReasonOther', 'singleReasonCounter');
+        });
+
         document.getElementById('bulkType').addEventListener('change', async function () {
             await loadReasonOptions(this.value, 'bulkReasonSelect', 'bulkReasonOtherWrap', 'bulkReasonOther');
         });
 
         document.getElementById('bulkReasonSelect').addEventListener('change', function () {
             toggleOtherReason('bulkReasonSelect', 'bulkReasonOtherWrap');
+        });
+
+        document.getElementById('bulkReasonOther').addEventListener('input', function () {
+            updateReasonCounter('bulkReasonOther', 'bulkReasonCounter');
         });
 
         document.getElementById('bulkSearch').addEventListener('input', renderBulkProducts);

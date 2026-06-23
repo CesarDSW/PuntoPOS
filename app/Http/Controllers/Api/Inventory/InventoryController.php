@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Inventory;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Support\UserAccess;
+use App\Services\NotificationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -102,6 +103,11 @@ class InventoryController extends Controller
         $branchId = $this->resolveBranchId(
             isset($validated['branch_id']) ? (int) $validated['branch_id'] : null,
             $companyId
+        );
+
+        app(NotificationService::class)->syncCurrentInventoryStatus(
+            companyId: $companyId,
+            branchId: $branchId
         );
 
         $query = DB::table('branch_product_stock as bps')
@@ -211,6 +217,11 @@ class InventoryController extends Controller
         $branchId = $this->resolveBranchId(
             isset($validated['branch_id']) ? (int) $validated['branch_id'] : null,
             $companyId
+        );
+
+        app(NotificationService::class)->syncCurrentInventoryStatus(
+            companyId: $companyId,
+            branchId: $branchId
         );
 
         $query = DB::table('branch_product_stock as bps')

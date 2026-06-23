@@ -15,12 +15,12 @@
 .page-header h1 {
     margin: 0 0 8px;
     font-size: 32px;
-    color: #0f172a;
+    color: #ffffff;
 }
 
 .page-header p {
     margin: 0;
-    color: #64748b;
+    color: #8ea2c8;
     font-size: 16px;
 }
 
@@ -32,10 +32,10 @@
     padding: 0 20px;
     border: 1px solid #d1d5db;
     border-radius: 12px;
-    background: #fff;
+    background: #ffffff;
     color: #0f172a;
     text-decoration: none;
-    font-weight: 600;
+    font-weight: 700;
 }
 
 .summary-grid {
@@ -46,7 +46,7 @@
 
 .summary-card,
 .card {
-    background: #fff;
+    background: #ffffff;
     border: 1px solid #e5e7eb;
     border-radius: 16px;
 }
@@ -56,20 +56,20 @@
 }
 
 .summary-label {
-    color: #64748b;
+    color: #475569;
     font-size: 14px;
     margin-bottom: 10px;
 }
 
 .summary-value {
     font-size: 22px;
-    font-weight: 700;
+    font-weight: 800;
     color: #0f172a;
 }
 
 .summary-note {
     margin-top: 8px;
-    color: #64748b;
+    color: #475569;
     font-size: 13px;
 }
 
@@ -83,13 +83,13 @@
 .customer-info-block strong {
     display: block;
     font-size: 13px;
-    color: #64748b;
+    color: #475569;
     margin-bottom: 6px;
 }
 
 .customer-info-block span {
     color: #0f172a;
-    font-weight: 600;
+    font-weight: 700;
 }
 
 .card-head {
@@ -103,34 +103,61 @@
 
 .card-title {
     font-size: 18px;
-    font-weight: 700;
+    font-weight: 800;
     color: #0f172a;
 }
 
 .card-subtitle {
-    color: #64748b;
+    color: #475569;
     font-size: 14px;
     margin-top: 4px;
 }
 
-table {
+.customer-history-table {
     width: 100%;
     border-collapse: collapse;
+    background: #ffffff;
 }
 
-th, td {
+.customer-history-table th,
+.customer-history-table td {
     padding: 14px 16px;
     border-bottom: 1px solid #e5e7eb;
     text-align: left;
     font-size: 14px;
     vertical-align: middle;
+    opacity: 1;
 }
 
-th {
+.customer-history-table th {
     background: #f8fafc;
     font-size: 12px;
-    color: #64748b;
+    color: #475569;
     text-transform: uppercase;
+    font-weight: 800;
+}
+
+.customer-history-table td {
+    color: #334155 !important;
+    font-weight: 500;
+}
+
+.customer-history-table td.sale-id {
+    color: #1d4ed8 !important;
+    font-weight: 800;
+}
+
+.customer-history-table td.sale-total {
+    color: #0f172a !important;
+    font-weight: 800;
+}
+
+.customer-history-table tbody tr {
+    background: #ffffff;
+}
+
+.customer-history-table tbody tr:hover {
+    background: #f8fafc;
 }
 
 .badge {
@@ -138,11 +165,23 @@ th {
     padding: 5px 10px;
     border-radius: 999px;
     font-size: 12px;
+    font-weight: 700;
 }
 
-.badge-blue { background: #eef2ff; color: #1d4ed8; }
-.badge-yellow { background: #fef3c7; color: #92400e; }
-.badge-red { background: #fee2e2; color: #b91c1c; }
+.badge-blue {
+    background: #eef2ff;
+    color: #1d4ed8;
+}
+
+.badge-yellow {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-red {
+    background: #fee2e2;
+    color: #b91c1c;
+}
 
 .icon-link {
     color: #1d4ed8;
@@ -154,6 +193,35 @@ th {
     padding: 22px;
     text-align: center;
     color: #64748b;
+}
+
+/* =========================================================
+   FIX ESPECIAL - HISTORIAL DE CLIENTE
+========================================================= */
+
+body[data-theme="dark"] .customer-history-table td {
+    color: var(--panel-muted) !important;
+}
+
+body[data-theme="dark"] .customer-history-table td.sale-id {
+    color: #60a5fa !important;
+}
+
+body[data-theme="dark"] .customer-history-table td.sale-total {
+    color: var(--panel-text) !important;
+}
+
+body[data-theme="dark"] .customer-history-table th {
+    background: var(--panel-bg-soft) !important;
+    color: var(--panel-muted) !important;
+}
+
+body[data-theme="dark"] .customer-info-block span {
+    color: var(--panel-text) !important;
+}
+
+body[data-theme="dark"] .customer-info-block strong {
+    color: var(--panel-muted) !important;
 }
 
 @media (max-width: 1100px) {

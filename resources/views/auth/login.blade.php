@@ -1,7 +1,9 @@
 @extends('layout.auth_design')
 
 @section('content')
+<div class="auth-container"> {{-- 🔥 CONTENEDOR PRINCIPAL --}}
     <div class="auth-split">
+        <!-- IZQUIERDA -->
         <div class="auth-left">
             <h1>Bienvenido</h1>
             <h2>Administra tu negocio fácilmente</h2>
@@ -31,7 +33,8 @@
                 </div>
             </div>
         </div>
-        
+
+        <!-- DERECHA -->
         <div class="auth-right">
             <div class="login-card">
                 <h2 class="login-title">Iniciar sesión</h2>
@@ -54,6 +57,7 @@
                 <form method="POST" action="{{ route('login') }}">
                     @csrf
                     
+                    <!-- EMAIL -->
                     <div class="input-group">
                         <input 
                             type="email" 
@@ -64,6 +68,7 @@
                         >
                     </div>
                     
+                    <!-- PASSWORD -->
                     <div class="input-group">
                         <input 
                             type="password" 
@@ -73,6 +78,7 @@
                         >
                     </div>
 
+                    <!-- OPCIONES -->
                     <div class="login-row">
                         <label class="remember-box">
                             <input type="checkbox" name="remember">
@@ -83,7 +89,8 @@
                             ¿Olvidaste tu contraseña?
                         </a>
                     </div>
-                    
+
+                    <!-- BOTON -->
                     <button type="submit" class="btn-primary-auth">
                         Iniciar sesión
                     </button>
@@ -94,8 +101,8 @@
                 </div>
 
                 <a href="{{ route('google.redirect') }}" class="google-button">
-                    <span class="google-icon">G</span>
-                    Continuar con Google
+                    <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google">
+                    <span>Continuar con Google</span>
                 </a>
 
                 <div class="register-text">

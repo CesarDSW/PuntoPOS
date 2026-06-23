@@ -12,6 +12,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detalle de venta</title>
+
+    <link rel="stylesheet" href="{{ asset('css/theme-colors.css') }}">
     <style>
         * {
             box-sizing: border-box;
@@ -210,7 +212,76 @@
         }
     </style>
 </head>
-<body>
+
+@php
+    $companyIdForTheme = auth()->user()->company_idfk ?? null;
+    $prefsForTheme = \App\Support\CompanyPreference::all($companyIdForTheme);
+
+    $themePreference =
+        $prefsForTheme['theme'] ??
+        $prefsForTheme['theme_mode'] ??
+        $prefsForTheme['appearance'] ??
+        $prefsForTheme['interface_theme'] ??
+        session('theme', 'light');
+
+    if (! in_array($themePreference, ['light', 'dark', 'auto'])) {
+        $themePreference = 'light';
+    }
+
+    $resolvedTheme = $themePreference === 'auto' ? 'light' : $themePreference;
+@endphp
+
+<body
+    data-theme="{{ $resolvedTheme }}"
+    data-theme-preference="{{ $themePreference }}"
+>
+    <script>
+        (function () {
+            const body = document.body;
+            const root = document.documentElement;
+
+            const serverTheme =
+                body.dataset.themePreference ||
+                body.dataset.theme ||
+                'light';
+
+            const normalizedPreference = ['light', 'dark', 'auto'].includes(serverTheme)
+                ? serverTheme
+                : 'light';
+
+            const media = window.matchMedia('(prefers-color-scheme: dark)');
+
+            function resolveTheme(value) {
+                if (value === 'auto') {
+                    return media.matches ? 'dark' : 'light';
+                }
+
+                return value === 'dark' ? 'dark' : 'light';
+            }
+
+            function applyTheme() {
+                const resolved = resolveTheme(normalizedPreference);
+
+                root.setAttribute('data-theme', resolved);
+                body.setAttribute('data-theme', resolved);
+                body.setAttribute('data-theme-preference', normalizedPreference);
+
+                localStorage.setItem('punto_theme', normalizedPreference);
+                localStorage.setItem('theme', normalizedPreference);
+            }
+
+            applyTheme();
+
+            if (normalizedPreference === 'auto') {
+                if (typeof media.addEventListener === 'function') {
+                    media.addEventListener('change', applyTheme);
+                } else if (typeof media.addListener === 'function') {
+                    media.addListener(applyTheme);
+                }
+            }
+        })();
+    </script>
+
     <div class="wrap">
         <div class="top-actions">
             <a href="/ventas" class="btn">Volver</a>
@@ -220,8 +291,9 @@
                 <a href="/ventas/{{ $saleId }}/ticket?print=1" target="_blank" class="btn">Imprimir ticket original</a>
             @endif
             
-            <button class="btn" onclick="openSmsModal()">Enviar por SMS</button>
-            
+        <!-- <button class="btn" onclick="openSmsModal()">Enviar por SMS</button> -->
+            <a href="{{ route('factura.generar', $saleId) }}" class="btn btn-primary"> Factura</a>
+
             @if($salesShowAccess['create'])
                 <a href="/ventas/pos" class="btn">Nueva venta</a>
             @endif
@@ -229,33 +301,33 @@
 
         <div id="saleContent" class="loading">Cargando detalle de venta...</div>
     </div>
+    <!-- 
+        <div class="overlay" id="smsModalOverlay">
+            <div class="modal">
+                <div class="modal-head">
+                    <div>
+                        <div style="font-size:18px; font-weight:700;">Enviar ticket por SMS</div>
+                        <div style="color:#64748b; margin-top:6px;">Comparte el resumen de compra</div>
+                    </div>
+                    <button class="btn" onclick="closeSmsModal()">Cerrar</button>
+                </div>
+                <div class="modal-body">
+                    <div>
+                        <div style="font-weight:600; margin-bottom:8px;">Número de teléfono del cliente</div>
+                        <input type="text" id="smsPhone" class="input" placeholder="5512345678">
+                    </div>
 
-    <div class="overlay" id="smsModalOverlay">
-        <div class="modal">
-            <div class="modal-head">
-                <div>
-                    <div style="font-size:18px; font-weight:700;">Enviar ticket por SMS</div>
-                    <div style="color:#64748b; margin-top:6px;">Comparte el resumen de compra</div>
+                    <div>
+                        <div style="font-weight:600; margin-bottom:8px;">Vista previa del mensaje</div>
+                        <div class="preview" id="smsPreview"></div>
+                    </div>
                 </div>
-                <button class="btn" onclick="closeSmsModal()">Cerrar</button>
-            </div>
-            <div class="modal-body">
-                <div>
-                    <div style="font-weight:600; margin-bottom:8px;">Número de teléfono del cliente</div>
-                    <input type="text" id="smsPhone" class="input" placeholder="5512345678">
-                </div>
-
-                <div>
-                    <div style="font-weight:600; margin-bottom:8px;">Vista previa del mensaje</div>
-                    <div class="preview" id="smsPreview"></div>
+                <div class="modal-foot">
+                    <button class="btn" onclick="closeSmsModal()">Cancelar</button>
+                    <button class="btn btn-primary" onclick="alert('La integración real de SMS queda pendiente.');">Enviar SMS</button>
                 </div>
             </div>
-            <div class="modal-foot">
-                <button class="btn" onclick="closeSmsModal()">Cancelar</button>
-                <button class="btn btn-primary" onclick="alert('La integración real de SMS queda pendiente.');">Enviar SMS</button>
-            </div>
-        </div>
-    </div>
+        </div>-->
 
     <script>
         const saleId = @json($saleId);
@@ -386,4 +458,19 @@
         document.addEventListener('DOMContentLoaded', loadSale);
     </script>
 </body>
+
+<script>
+(function () {
+    const savedTheme =
+        localStorage.getItem('theme') ||
+        localStorage.getItem('punto_theme') ||
+        document.body.getAttribute('data-theme') ||
+        'light';
+
+    const theme = savedTheme === 'dark' ? 'dark' : 'light';
+
+    document.documentElement.setAttribute('data-theme', theme);
+    document.body.setAttribute('data-theme', theme);
+})();
+</script>
 </html>

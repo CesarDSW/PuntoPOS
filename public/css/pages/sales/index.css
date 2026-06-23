@@ -179,7 +179,6 @@ th { background:#f8fafc; font-size:12px; color:#64748b; text-transform:uppercase
 .chart-card,
 .list-card,
 .modal-box,
-.modal,
 .history-item,
 .bulk-item,
 .product-box,
@@ -269,6 +268,139 @@ td,
 .bars-grid,
 .method-bar-wrap {
     border-color: var(--panel-border);
+}
+
+/* =========================================================
+   FIX TEMA OSCURO - VENTAS INDEX
+========================================================= */
+
+.sales-wrap,
+.sales-header,
+.sales-actions {
+    color: var(--app-text);
+}
+
+.sales-header h1,
+.sales-wrap h1,
+.sales-wrap h2,
+.sales-wrap h3 {
+    color: var(--app-text) !important;
+}
+
+.sales-header p,
+.sales-wrap p {
+    color: var(--app-muted) !important;
+}
+
+.sales-wrap .summary-card,
+.sales-wrap .filters-card,
+.sales-wrap .card,
+.sales-wrap .info-card {
+    background: var(--panel-bg) !important;
+    color: var(--panel-text) !important;
+    border-color: var(--panel-border) !important;
+}
+
+.sales-wrap .card-head,
+.sales-wrap .modal-head,
+.sales-wrap .modal-foot {
+    border-color: var(--panel-border) !important;
+}
+
+.sales-wrap .summary-label,
+.sales-wrap .summary-note,
+.sales-wrap .card-subtitle,
+.sales-wrap td {
+    color: var(--panel-muted) !important;
+}
+
+.sales-wrap .summary-value,
+.sales-wrap .card-title,
+.sales-wrap .modal-title {
+    color: var(--panel-text) !important;
+}
+
+.sales-wrap .input,
+.sales-wrap .select,
+.sales-wrap .textarea,
+.sales-wrap input,
+.sales-wrap select,
+.sales-wrap textarea {
+    background: var(--app-surface-2) !important;
+    color: var(--app-text) !important;
+    border-color: var(--app-border) !important;
+}
+
+.sales-wrap .input::placeholder,
+.sales-wrap .textarea::placeholder,
+.sales-wrap input::placeholder,
+.sales-wrap textarea::placeholder {
+    color: var(--app-muted) !important;
+    opacity: 1;
+}
+
+.sales-wrap table {
+    background: var(--panel-bg) !important;
+    color: var(--panel-text) !important;
+}
+
+.sales-wrap th {
+    background: var(--panel-bg-soft) !important;
+    color: var(--panel-muted) !important;
+    border-color: var(--panel-border) !important;
+}
+
+.sales-wrap td {
+    background: transparent !important;
+    border-color: var(--panel-border) !important;
+}
+
+.sales-wrap tbody tr {
+    background: var(--panel-bg) !important;
+}
+
+.sales-wrap tbody tr:hover {
+    background: var(--app-hover) !important;
+}
+
+.sales-wrap .overlay {
+    background: var(--app-overlay) !important;
+}
+
+.sales-wrap .modal {
+    background: var(--app-surface) !important;
+    color: var(--app-text) !important;
+    border-color: var(--app-border) !important;
+}
+
+.sales-wrap .modal-head,
+.sales-wrap .modal-body,
+.sales-wrap .modal-foot {
+    background: var(--app-surface) !important;
+    color: var(--app-text) !important;
+}
+
+.sales-wrap .badge-blue {
+    background: var(--badge-bg) !important;
+    color: var(--badge-text) !important;
+}
+
+.sales-wrap .badge-yellow {
+    background: var(--info-bg) !important;
+    color: var(--info-text) !important;
+    border: 1px solid var(--info-border);
+}
+
+.sales-wrap .badge-red {
+    background: var(--error-bg) !important;
+    color: var(--error-text) !important;
+}
+
+body[data-theme="dark"] .sales-wrap .summary-card,
+body[data-theme="dark"] .sales-wrap .filters-card,
+body[data-theme="dark"] .sales-wrap .card,
+body[data-theme="dark"] .sales-wrap .modal {
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
 }
 
 @media (max-width: 1100px) {

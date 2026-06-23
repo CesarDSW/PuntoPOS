@@ -60,8 +60,99 @@
         color:#1d4ed8;
         font-weight:700;
     }
+    
     @media (max-width: 1100px) {
         .summary-grid { grid-template-columns:1fr; }
         .filters-card { grid-template-columns:1fr; }
         .cash-header { flex-direction:column; align-items:stretch; }
     }
+
+/* =========================================================
+   FIX TEMA OSCURO - HISTORIAL DE CAJAS
+========================================================= */
+
+.cash-wrap {
+    color: var(--app-text);
+}
+
+.cash-header h1,
+.cash-wrap h1,
+.cash-wrap h2,
+.cash-wrap h3,
+.cash-wrap .summary-value,
+.cash-wrap .card-title {
+    color: var(--panel-text) !important;
+}
+
+.cash-header p,
+.cash-wrap p,
+.cash-wrap .summary-label,
+.cash-wrap .card-subtitle,
+.cash-wrap td,
+.cash-wrap .empty-box {
+    color: var(--panel-muted) !important;
+}
+
+.cash-wrap .summary-card,
+.cash-wrap .filters-card,
+.cash-wrap .card {
+    background: var(--panel-bg) !important;
+    color: var(--panel-text) !important;
+    border-color: var(--panel-border) !important;
+}
+
+.cash-wrap .card-head {
+    border-color: var(--panel-border) !important;
+}
+
+.cash-wrap .input,
+.cash-wrap .select,
+.cash-wrap input,
+.cash-wrap select {
+    background: var(--app-surface-2) !important;
+    color: var(--app-text) !important;
+    border-color: var(--app-border) !important;
+}
+
+.cash-wrap table {
+    background: var(--panel-bg) !important;
+}
+
+.cash-wrap th {
+    background: var(--panel-bg-soft) !important;
+    color: var(--panel-muted) !important;
+    border-color: var(--panel-border) !important;
+}
+
+.cash-wrap td {
+    background: transparent !important;
+    border-color: var(--panel-border) !important;
+}
+
+.cash-wrap tbody tr {
+    background: var(--panel-bg) !important;
+}
+
+.cash-wrap tbody tr:hover {
+    background: var(--app-hover) !important;
+}
+
+.cash-wrap .badge-green {
+    background: var(--success-bg) !important;
+    color: var(--success-text) !important;
+}
+
+.cash-wrap .badge-blue {
+    background: var(--badge-bg) !important;
+    color: var(--badge-text) !important;
+}
+
+.cash-wrap .link-btn {
+    color: var(--app-primary) !important;
+}
+
+body[data-theme="dark"] .cash-wrap .summary-card,
+body[data-theme="dark"] .cash-wrap .filters-card,
+body[data-theme="dark"] .cash-wrap .card {
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+}
