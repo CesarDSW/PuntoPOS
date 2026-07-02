@@ -33,7 +33,33 @@
 
 <header class="topbar">
     <div class="topbar-left">
-        <input type="text" placeholder="Buscar..." readonly>
+        <div class="global-search-wrapper" id="globalSearchWrapper">
+            <div class="global-search-box">
+                <input
+                    type="text"
+                    id="globalSearchInput"
+                    class="global-search-input"
+                    placeholder="Buscar clientes, productos, ventas, pagos..."
+                    autocomplete="off"
+                >
+
+                <button
+                    type="button"
+                    class="global-search-clear"
+                    id="globalSearchClear"
+                    style="display:none;"
+                    aria-label="Limpiar búsqueda"
+                >
+                    ×
+                </button>
+            </div>
+
+            <div class="global-search-dropdown" id="globalSearchDropdown">
+                <div class="global-search-empty">
+                    Escribe para buscar en todo el sistema.
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="topbar-right">
@@ -51,13 +77,13 @@
                     </div>
 
                     <div class="notification-header-actions">
-                            <button type="button" id="markAllNotificationsRead">
-                                Marcar leídas
-                            </button>
+                        <button type="button" id="markAllNotificationsRead">
+                            Marcar leídas
+                        </button>
 
-                            <button type="button" id="deleteReadNotifications">
-                                Borrar leídas
-                            </button>
+                        <button type="button" id="deleteReadNotifications">
+                            Borrar leídas
+                        </button>
                     </div>
                 </div>
 
@@ -413,6 +439,155 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     applyBranchModalMode();
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const searchWrapper = document.getElementById('globalSearchWrapper');
+    const searchInput = document.getElementById('globalSearchInput');
+    const searchDropdown = document.getElementById('globalSearchDropdown');
+    const searchClear = document.getElementById('globalSearchClear');
+
+    if (!searchWrapper || !searchInput || !searchDropdown || !searchClear) {
+        return;
+    }
+
+    const routes = {
+        search: "{{ route('global.search') }}"
+    };
+
+    let debounceTimer = null;
+    let lastQuery = '';
+    let currentController = null;
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function showDropdown() {
+        searchDropdown.classList.add('show');
+    }
+
+    function hideDropdown() {
+        searchDropdown.classList.remove('show');
+    }
+
+    function setEmpty(message) {
+        searchDropdown.innerHTML = `
+            <div class="global-search-empty">${escapeHtml(message)}</div>
+        `;
+    }
+
+    function renderResults(results) {
+        if (!Array.isArray(results) || results.length === 0) {
+            setEmpty('No se encontraron resultados.');
+            return;
+        }
+
+        searchDropdown.innerHTML = results.map(function (item) {
+            return `
+                <a href="${escapeHtml(item.url)}" class="global-search-item">
+                    <span class="global-search-type">${escapeHtml(item.type)}</span>
+                    <div class="global-search-content">
+                        <strong>${escapeHtml(item.title)}</strong>
+                        <small>${escapeHtml(item.subtitle || '')}</small>
+                    </div>
+                </a>
+            `;
+        }).join('');
+    }
+
+    async function performSearch(query) {
+        const trimmed = query.trim();
+
+        if (trimmed.length === 0) {
+            setEmpty('Escribe para buscar en todo el sistema.');
+            searchClear.style.display = 'none';
+            lastQuery = '';
+            return;
+        }
+
+        if (trimmed.length < 2) {
+            setEmpty('Escribe al menos 2 caracteres.');
+            searchClear.style.display = 'inline-flex';
+            lastQuery = trimmed;
+            return;
+        }
+
+        searchClear.style.display = 'inline-flex';
+        lastQuery = trimmed;
+        setEmpty('Buscando...');
+        showDropdown();
+
+        if (currentController) {
+            currentController.abort();
+        }
+
+        currentController = new AbortController();
+
+        try {
+            const response = await fetch(`${routes.search}?q=${encodeURIComponent(trimmed)}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                signal: currentController.signal
+            });
+
+            if (!response.ok) {
+                setEmpty('No se pudo realizar la búsqueda.');
+                return;
+            }
+
+            const data = await response.json();
+            renderResults(data.results || []);
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                return;
+            }
+
+            setEmpty('Ocurrió un error al buscar.');
+        }
+    }
+
+    searchInput.addEventListener('focus', function () {
+        showDropdown();
+
+        if (!searchInput.value.trim()) {
+            setEmpty('Escribe para buscar en todo el sistema.');
+        }
+    });
+
+    searchInput.addEventListener('input', function () {
+        const value = this.value || '';
+
+        clearTimeout(debounceTimer);
+
+        debounceTimer = setTimeout(function () {
+            performSearch(value);
+        }, 280);
+    });
+
+    searchClear.addEventListener('click', function () {
+        searchInput.value = '';
+        searchInput.focus();
+        searchClear.style.display = 'none';
+        setEmpty('Escribe para buscar en todo el sistema.');
+        showDropdown();
+    });
+
+    document.addEventListener('click', function (event) {
+        if (!searchWrapper.contains(event.target)) {
+            hideDropdown();
+        }
+    });
 });
 </script>
 

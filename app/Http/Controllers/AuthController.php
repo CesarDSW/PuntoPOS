@@ -78,8 +78,11 @@ class AuthController extends Controller
 
             // CREAR SUSCRIPCIÓN / PRUEBA GRATUITA
             Subscription::create([
+                'user_idfk' => $user->userr_id,
                 'company_idfk' => $company->company_id,
                 'status_subscription' => true,
+                'status' => 'activa',
+                'plan' => 'trial',
                 'start_date' => now()->toDateString(),
                 'end_date' => now()->addDays(14)->toDateString(),
             ]);

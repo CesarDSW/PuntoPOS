@@ -18,10 +18,12 @@ class CheckSubscription
             return redirect()->route('login');
         }
 
+        // El rol DEV no se bloquea por suscripción
         if ($user->isDeveloper()) {
             return $next($request);
         }
 
+        // Permitir acceso a pantallas de suscripción / checkout
         if (
             $request->routeIs('suscripcion') ||
             $request->routeIs('checkout') ||
@@ -36,21 +38,34 @@ class CheckSubscription
         }
 
         $subscription = Subscription::where('company_idfk', $user->company_idfk)
-            ->where('status', 'activa')
-            ->orderBy('subscription_id', 'desc')
+            ->orderByDesc('subscription_id')
             ->first();
 
+        // Si no hay suscripción, mandar a pagar
         if (!$subscription) {
             return redirect()->route('suscripcion');
         }
 
-        if ($subscription->end_date && now()->greaterThan(Carbon::parse($subscription->end_date))) {
-            $subscription->update([
-                'status' => 'vencida',
-                'status_subscription' => false,
-            ]);
+        $endDate = $subscription->end_date ? Carbon::parse($subscription->end_date) : null;
+
+        // Si ya venció, marcarla vencida y bloquear
+        if ($endDate && now()->gt($endDate->endOfDay())) {
+            if ($subscription->status !== 'vencida' || (bool) $subscription->status_subscription !== false) {
+                $subscription->update([
+                    'status' => 'vencida',
+                    'status_subscription' => false,
+                ]);
+            }
 
             return redirect()->route('suscripcion');
+        }
+
+        // Si sigue vigente, asegurar que quede activa
+        if ($subscription->status !== 'activa' || (bool) $subscription->status_subscription !== true) {
+            $subscription->update([
+                'status' => 'activa',
+                'status_subscription' => true,
+            ]);
         }
 
         return $next($request);

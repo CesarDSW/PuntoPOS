@@ -637,6 +637,177 @@ select.form-input {
     flex-shrink: 0;
 }
 
+.dashboard-upload-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    border: 2px dashed #d1d5db;
+    border-radius: 18px;
+    background: #fafafa;
+    cursor: pointer;
+    padding: 18px;
+    transition: all 0.25s ease;
+    overflow: hidden;
+    text-align: center;
+}
+
+.dashboard-upload-box:hover {
+    border-color: #2563eb;
+    background: #f8fbff;
+}
+
+.dashboard-upload-box.has-image {
+    border-style: solid;
+    border-color: #2563eb;
+    background: #ffffff;
+}
+
+.dashboard-upload-box input[type="file"] {
+    display: none;
+}
+
+.upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #4b5563;
+}
+
+.upload-icon {
+    font-size: 28px;
+    line-height: 1;
+}
+
+.logo-preview-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+}
+
+.logo-preview-img {
+    width: 100%;
+    max-width: 220px;
+    max-height: 140px;
+    object-fit: contain;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.10);
+    padding: 10px;
+}
+
+.logo-file-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: #374151;
+    text-align: center;
+}
+
+.logo-file-meta strong {
+    font-size: 14px;
+    word-break: break-word;
+}
+
+.logo-file-meta small {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+/* =========================================
+   MÉTODOS DE PAGO - ONBOARDING
+========================================= */
+.payment-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 10px;
+}
+
+.payment-option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 58px;
+    padding: 14px 18px;
+    border: 1.5px solid #dbe3ef;
+    border-radius: 16px;
+    background: #f8fafc;
+    color: #1f2937;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.22s ease;
+    user-select: none;
+    overflow: hidden;
+    text-align: center;
+}
+
+.payment-option:hover {
+    border-color: #2563eb;
+    background: #eff6ff;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.10);
+}
+
+.payment-option input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.payment-option span {
+    position: relative;
+    z-index: 2;
+}
+
+/* Estado seleccionado */
+.payment-option:has(input:checked) {
+    border-color: #2563eb;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: #ffffff;
+    box-shadow: 0 14px 28px rgba(37, 99, 235, 0.22);
+}
+
+/* Iconito de check */
+.payment-option:has(input:checked)::after {
+    content: "✓";
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Focus accesible */
+.payment-option:has(input:focus-visible) {
+    outline: 3px solid rgba(37, 99, 235, 0.20);
+    outline-offset: 2px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .payment-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* =========================================================
    SETTINGS
 ========================================================= */

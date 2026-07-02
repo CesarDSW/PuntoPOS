@@ -42,12 +42,25 @@
                         <div class="form-group">
                             <label>Logo del negocio</label>
 
-                            <label for="logoInput" class="dashboard-upload-box">
-                                <input type="file" name="logo" id="logoInput">
-                                <div>
-                                    ⬆️
+                            <label for="logoInput" class="dashboard-upload-box" id="logoUploadBox">
+                                <input 
+                                    type="file" 
+                                    name="logo" 
+                                    id="logoInput"
+                                    accept="image/png,image/jpeg,image/jpg,image/webp">
+
+                                <div class="upload-placeholder" id="uploadPlaceholder">
+                                    <div class="upload-icon">⬆️</div>
                                     <p>Haz clic para subir tu logo</p>
                                     <small>PNG, JPG hasta 2MB</small>
+                                </div>
+
+                                <div class="logo-preview-wrapper" id="logoPreviewWrapper" style="display: none;">
+                                    <img id="logoPreview" class="logo-preview-img" alt="Vista previa del logo">
+                                    <div class="logo-file-meta">
+                                        <strong id="logoFileName">archivo.png</strong>
+                                        <small>Imagen seleccionada correctamente</small>
+                                    </div>     
                                 </div>
                             </label>
                         </div>
@@ -526,6 +539,75 @@
     {
         const banner = document.querySelector('.trial-banner');
         banner.style.display = 'none';
+    }
+
+    // =========================================
+    // PREVIEW DE LOGO EN ONBOARDING
+    // =========================================
+    const logoInput = document.getElementById('logoInput');
+    const logoPreview = document.getElementById('logoPreview');
+    const logoPreviewWrapper = document.getElementById('logoPreviewWrapper');
+    const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+    const logoFileName = document.getElementById('logoFileName');
+    const logoUploadBox = document.getElementById('logoUploadBox');
+
+    if (
+        logoInput &&
+        logoPreview &&
+        logoPreviewWrapper &&
+        uploadPlaceholder &&
+        logoFileName &&
+        logoUploadBox
+    ) {
+        logoInput.addEventListener('change', function (event) {
+            const file = event.target.files[0];
+
+            if (!file) {
+                logoPreviewWrapper.style.display = 'none';
+                uploadPlaceholder.style.display = 'flex';
+                logoUploadBox.classList.remove('has-image');
+                logoPreview.src = '';
+                logoFileName.textContent = '';
+                return;
+            }
+
+            const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+
+            if (!allowedTypes.includes(file.type)) {
+                alert('Solo se permiten imágenes PNG, JPG, JPEG o WEBP.');
+                logoInput.value = '';
+                logoPreviewWrapper.style.display = 'none';
+                uploadPlaceholder.style.display = 'flex';
+                logoUploadBox.classList.remove('has-image');
+                logoPreview.src = '';
+                logoFileName.textContent = '';
+                return;
+            }
+
+            const maxSize = 2 * 1024 * 1024; // 2MB
+            if (file.size > maxSize) {
+                alert('La imagen no debe superar los 2MB.');
+                logoInput.value = '';
+                logoPreviewWrapper.style.display = 'none';
+                uploadPlaceholder.style.display = 'flex';
+                logoUploadBox.classList.remove('has-image');
+                logoPreview.src = '';
+                logoFileName.textContent = '';
+                return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                logoPreview.src = e.target.result;
+                logoFileName.textContent = file.name;
+                uploadPlaceholder.style.display = 'none';
+                logoPreviewWrapper.style.display = 'flex';
+                logoUploadBox.classList.add('has-image');
+            };
+
+            reader.readAsDataURL(file);
+        });
     }
 </script>
 
