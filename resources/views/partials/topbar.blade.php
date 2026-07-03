@@ -434,7 +434,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-<script>
+<!--<script>
 document.addEventListener('DOMContentLoaded', function () {
     const searchWrapper = document.getElementById('globalSearch');
     const searchInput = document.getElementById('globalSearchInput');
@@ -692,7 +692,7 @@ document.addEventListener('DOMContentLoaded', function () {
         event.stopPropagation();
     });
 });
-</script>
+</script> -->
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {

@@ -21,7 +21,7 @@ use App\Http\Controllers\FacturaController;
 use App\Http\Controllers\SupportController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\DeveloperSupportController;
-use App\Http\Controllers\GlobalSearchController;
+/*use App\Http\Controllers\GlobalSearchController;*/
 
 // APIs / módulos
 use App\Http\Controllers\Api\BranchContextController;

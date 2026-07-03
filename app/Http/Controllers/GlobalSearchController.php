@@ -7,9 +7,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use App\Support\UserAccess;
 
-class GlobalSearchController extends Controller
+/* class GlobalSearchController extends Controller
 {
-    /* public function search(Request $request): JsonResponse
+    public function search(Request $request): JsonResponse
     {
         $user = $request->user();
         $term = trim((string) $request->query('q', ''));
@@ -316,5 +316,5 @@ class GlobalSearchController extends Controller
         } catch (\Throwable $e) {
             return null;
         }
-    } */ 
-}
+    }
+} */
