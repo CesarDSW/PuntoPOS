@@ -434,7 +434,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-<!--<script>
+<!-- <script>
 document.addEventListener('DOMContentLoaded', function () {
     const searchWrapper = document.getElementById('globalSearch');
     const searchInput = document.getElementById('globalSearchInput');
@@ -445,7 +445,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
-    const searchRoute = @json(route('global-search'));
+    {{-- const searchRoute = '#'; --}}
     let debounceTimer = null;
     let currentRequest = null;
     let currentItems = [];
@@ -576,7 +576,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateActiveItem() {
-        const nodes = Array.from(searchResults.querySelectorAll('.global-search-item'));
+        {{-- const nodes = Array.from(searchResults.querySelectorAll('.global-search-item')); --}}
 
         nodes.forEach((node, index) => {
             node.classList.toggle('active', index === activeIndex);
