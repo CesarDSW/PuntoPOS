@@ -10,15 +10,15 @@ class RoleSeeder extends Seeder
     public function run(): void 
     {
         $roles = [
-            'ADMINISTRADOR',
-            'GERENTE',
-            'CAJERO',
-            'DEV',
+            1 => 'ADMINISTRADOR',
+            2 => 'GERENTE',
+            3 => 'CAJERO',
+            4 => 'DEV',
         ];
 
-        foreach ($roles as $role) {
+        foreach ($roles as $id => $role) {
             DB::table('rol')->updateOrInsert(
-                ['type_rol' => $role],
+                ['id' => $id],
                 ['type_rol' => $role]
             );
         }
