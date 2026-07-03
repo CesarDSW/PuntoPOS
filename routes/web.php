@@ -291,6 +291,9 @@ Route::middleware(['auth', 'subscription'])->group(function () {
     Route::post('/onboarding', [DashboardController::class, 'storeOnboarding'])
         ->name('onboarding.store');
 
+    /* Route::get('/busqueda-global', [GlobalSearchController::class, 'search'])
+        ->name('global-search'); */
+
     /*
     |--------------------------------------------------------------------------
     | Configuración
@@ -367,14 +370,6 @@ Route::middleware(['auth', 'subscription'])->group(function () {
 
     Route::redirect('/clientes', '/cliente')
         ->name('customers.index');
-
-    /*
-    |--------------------------------------------------------------------------
-    | Búsqueda global
-    |--------------------------------------------------------------------------
-    */
-    Route::get('/busqueda-global', [GlobalSearchController::class, 'search'])
-        ->name('global.search');
 
     /*
     |--------------------------------------------------------------------------

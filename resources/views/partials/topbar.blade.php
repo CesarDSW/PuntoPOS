@@ -32,35 +32,25 @@
 @endphp
 
 <header class="topbar">
-    <div class="topbar-left">
-        <div class="global-search-wrapper" id="globalSearchWrapper">
-            <div class="global-search-box">
-                <input
-                    type="text"
-                    id="globalSearchInput"
-                    class="global-search-input"
-                    placeholder="Buscar clientes, productos, ventas, pagos..."
-                    autocomplete="off"
-                >
-
-                <button
-                    type="button"
-                    class="global-search-clear"
-                    id="globalSearchClear"
-                    style="display:none;"
-                    aria-label="Limpiar búsqueda"
-                >
-                    ×
-                </button>
-            </div>
+    <!-- <div class="topbar-left">
+        <div class="global-search" id="globalSearch">
+            <input
+                type="text"
+                id="globalSearchInput"
+                class="global-search-input"
+                placeholder="Buscar productos, servicios, clientes, ventas..."
+                autocomplete="off"
+            >
 
             <div class="global-search-dropdown" id="globalSearchDropdown">
-                <div class="global-search-empty">
-                    Escribe para buscar en todo el sistema.
+                <div class="global-search-results" id="globalSearchResults">
+                    <div class="global-search-empty">
+                        Escribe al menos 2 letras para buscar.
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <div class="topbar-right">
         <div class="notification-wrapper" id="notificationWrapper">
@@ -94,7 +84,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="branch-selector">
             @if($canOpenBranchDropdown)
                 <button type="button" class="branch-button" id="branchButton">
@@ -422,6 +412,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     applyBranchModalMode();
                     submitCreateBranchText.textContent = 'Crear sucursal';
+                    submitCreateBranch.disabled = false;
                     return;
                 }
 
@@ -434,6 +425,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 showError('Ocurrió un error al crear la sucursal.');
                 applyBranchModalMode();
                 submitCreateBranchText.textContent = 'Crear sucursal';
+                submitCreateBranch.disabled = false;
             }
         });
     }
@@ -444,22 +436,36 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const searchWrapper = document.getElementById('globalSearchWrapper');
+    const searchWrapper = document.getElementById('globalSearch');
     const searchInput = document.getElementById('globalSearchInput');
     const searchDropdown = document.getElementById('globalSearchDropdown');
-    const searchClear = document.getElementById('globalSearchClear');
+    const searchResults = document.getElementById('globalSearchResults');
 
-    if (!searchWrapper || !searchInput || !searchDropdown || !searchClear) {
+    if (!searchWrapper || !searchInput || !searchDropdown || !searchResults) {
         return;
     }
 
-    const routes = {
-        search: "{{ route('global.search') }}"
+    const searchRoute = @json(route('global-search'));
+    let debounceTimer = null;
+    let currentRequest = null;
+    let currentItems = [];
+    let activeIndex = -1;
+
+    const badgeLabels = {
+        products: 'Producto',
+        services: 'Servicio',
+        categories: 'Categoría',
+        customers: 'Cliente',
+        sales: 'Venta',
     };
 
-    let debounceTimer = null;
-    let lastQuery = '';
-    let currentController = null;
+    const icons = {
+        products: '📦',
+        services: '🛠️',
+        categories: '🏷️',
+        customers: '👤',
+        sales: '🧾',
+    };
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -470,75 +476,142 @@ document.addEventListener('DOMContentLoaded', function () {
             .replace(/'/g, '&#039;');
     }
 
-    function showDropdown() {
+    function openSearchDropdown() {
         searchDropdown.classList.add('show');
     }
 
-    function hideDropdown() {
+    function closeSearchDropdown() {
         searchDropdown.classList.remove('show');
+        activeIndex = -1;
+        currentItems = [];
     }
 
-    function setEmpty(message) {
-        searchDropdown.innerHTML = `
-            <div class="global-search-empty">${escapeHtml(message)}</div>
+    function setLoading() {
+        searchResults.innerHTML = `
+            <div class="global-search-loading">
+                Buscando...
+            </div>
         `;
+        openSearchDropdown();
     }
 
-    function renderResults(results) {
-        if (!Array.isArray(results) || results.length === 0) {
+    function setEmpty(message = 'No se encontraron resultados.') {
+        searchResults.innerHTML = `
+            <div class="global-search-empty">
+                ${escapeHtml(message)}
+            </div>
+        `;
+        currentItems = [];
+        activeIndex = -1;
+        openSearchDropdown();
+    }
+
+    function renderResults(groups) {
+        if (!Array.isArray(groups) || groups.length === 0) {
             setEmpty('No se encontraron resultados.');
             return;
         }
 
-        searchDropdown.innerHTML = results.map(function (item) {
-            return `
-                <a href="${escapeHtml(item.url)}" class="global-search-item">
-                    <span class="global-search-type">${escapeHtml(item.type)}</span>
-                    <div class="global-search-content">
-                        <strong>${escapeHtml(item.title)}</strong>
-                        <small>${escapeHtml(item.subtitle || '')}</small>
-                    </div>
-                </a>
+        let html = '';
+        const flatItems = [];
+
+        groups.forEach((group) => {
+            const items = Array.isArray(group.items) ? group.items : [];
+
+            if (!items.length) return;
+
+            html += `
+                <div class="global-search-group">
+                    <div class="global-search-group-title">${escapeHtml(group.group || 'Resultados')}</div>
             `;
-        }).join('');
+
+            items.forEach((item) => {
+                const index = flatItems.length;
+                flatItems.push(item);
+
+                html += `
+                    <a href="${escapeHtml(item.url || '#')}" class="global-search-item" data-index="${index}">
+                        <div class="global-search-item-icon">
+                            ${escapeHtml(icons[item.type] || '🔎')}
+                        </div>
+
+                        <div class="global-search-item-body">
+                            <div class="global-search-item-top">
+                                <span class="global-search-item-title">${escapeHtml(item.title || 'Sin título')}</span>
+                                <span class="global-search-badge ${escapeHtml(item.type || '')}">
+                                    ${escapeHtml(badgeLabels[item.type] || 'Resultado')}
+                                </span>
+                            </div>
+
+                            <div class="global-search-item-subtitle">
+                                ${escapeHtml(item.subtitle || '')}
+                            </div>
+
+                            <div class="global-search-item-meta">
+                                ${escapeHtml(item.meta || '')}
+                            </div>
+                        </div>
+                    </a>
+                `;
+            });
+
+            html += `</div>`;
+        });
+
+        if (!flatItems.length) {
+            setEmpty('No se encontraron resultados.');
+            return;
+        }
+
+        html += `
+            <div class="global-search-footer">
+                Usa ↑ ↓ para navegar y Enter para abrir el resultado.
+            </div>
+        `;
+
+        searchResults.innerHTML = html;
+        currentItems = flatItems;
+        activeIndex = -1;
+        openSearchDropdown();
     }
 
-    async function performSearch(query) {
-        const trimmed = query.trim();
+    function updateActiveItem() {
+        const nodes = Array.from(searchResults.querySelectorAll('.global-search-item'));
 
-        if (trimmed.length === 0) {
-            setEmpty('Escribe para buscar en todo el sistema.');
-            searchClear.style.display = 'none';
-            lastQuery = '';
+        nodes.forEach((node, index) => {
+            node.classList.toggle('active', index === activeIndex);
+        });
+
+        if (activeIndex >= 0 && nodes[activeIndex]) {
+            nodes[activeIndex].scrollIntoView({
+                block: 'nearest',
+            });
+        }
+    }
+
+    async function runSearch(query) {
+        const cleanQuery = (query || '').trim();
+
+        if (cleanQuery.length < 2) {
+            setEmpty('Escribe al menos 2 letras para buscar.');
             return;
         }
 
-        if (trimmed.length < 2) {
-            setEmpty('Escribe al menos 2 caracteres.');
-            searchClear.style.display = 'inline-flex';
-            lastQuery = trimmed;
-            return;
+        if (currentRequest) {
+            currentRequest.abort();
         }
 
-        searchClear.style.display = 'inline-flex';
-        lastQuery = trimmed;
-        setEmpty('Buscando...');
-        showDropdown();
-
-        if (currentController) {
-            currentController.abort();
-        }
-
-        currentController = new AbortController();
+        currentRequest = new AbortController();
+        setLoading();
 
         try {
-            const response = await fetch(`${routes.search}?q=${encodeURIComponent(trimmed)}`, {
+            const response = await fetch(`${searchRoute}?q=${encodeURIComponent(cleanQuery)}`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                signal: currentController.signal
+                signal: currentRequest.signal
             });
 
             if (!response.ok) {
@@ -558,35 +631,65 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     searchInput.addEventListener('focus', function () {
-        showDropdown();
+        const value = this.value.trim();
 
-        if (!searchInput.value.trim()) {
-            setEmpty('Escribe para buscar en todo el sistema.');
+        if (value.length >= 2) {
+            openSearchDropdown();
         }
     });
 
     searchInput.addEventListener('input', function () {
-        const value = this.value || '';
+        const value = this.value.trim();
 
         clearTimeout(debounceTimer);
 
-        debounceTimer = setTimeout(function () {
-            performSearch(value);
-        }, 280);
+        if (value.length < 2) {
+            setEmpty('Escribe al menos 2 letras para buscar.');
+            return;
+        }
+
+        debounceTimer = setTimeout(() => {
+            runSearch(value);
+        }, 250);
     });
 
-    searchClear.addEventListener('click', function () {
-        searchInput.value = '';
-        searchInput.focus();
-        searchClear.style.display = 'none';
-        setEmpty('Escribe para buscar en todo el sistema.');
-        showDropdown();
+    searchInput.addEventListener('keydown', function (event) {
+        const items = Array.from(searchResults.querySelectorAll('.global-search-item'));
+
+        if (!searchDropdown.classList.contains('show') || !items.length) {
+            return;
+        }
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            activeIndex = activeIndex < items.length - 1 ? activeIndex + 1 : 0;
+            updateActiveItem();
+        }
+
+        if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            activeIndex = activeIndex > 0 ? activeIndex - 1 : items.length - 1;
+            updateActiveItem();
+        }
+
+        if (event.key === 'Enter' && activeIndex >= 0 && items[activeIndex]) {
+            event.preventDefault();
+            window.location.href = items[activeIndex].getAttribute('href');
+        }
+
+        if (event.key === 'Escape') {
+            closeSearchDropdown();
+        }
     });
 
     document.addEventListener('click', function (event) {
         if (!searchWrapper.contains(event.target)) {
-            hideDropdown();
+            closeSearchDropdown();
         }
+    });
+
+    searchDropdown.addEventListener('click', function (event) {
+        event.stopPropagation();
     });
 });
 </script>
@@ -625,26 +728,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function getNotificationIcon(typeCode) {
-            if (typeCode === 'OUT_OF_STOCK') {
-                return '⛔';
-            }
-
-            if (typeCode === 'LOW_STOCK') {
-                return '📦';
-            }
-
-            if (typeCode === 'SALE_CANCELLED') {
-                return '❌';
-            }
-
-            if (typeCode === 'SALE_PENDING') {
-                return '⏳';
-            }
-
-            if (typeCode === 'SALE_COMPLETED') {
-                return '✅';
-            }
-
+            if (typeCode === 'OUT_OF_STOCK') return '⛔';
+            if (typeCode === 'LOW_STOCK') return '📦';
+            if (typeCode === 'SALE_CANCELLED') return '❌';
+            if (typeCode === 'SALE_PENDING') return '⏳';
+            if (typeCode === 'SALE_COMPLETED') return '✅';
             return '🔔';
         }
 
@@ -846,7 +934,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 event.preventDefault();
                 event.stopPropagation();
 
-                
                 const confirmDelete = await showSystemAlert({
                     title: '¿Borrar notificaciones leídas?',
                     text: 'Esta acción eliminará todas las notificaciones que ya fueron marcadas como leídas.',
@@ -859,7 +946,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     cancelButtonColor: '#64748b'
                 });
 
-                if (!confirmDelete.isConfirmed) {
+                if (!confirmDelete || !confirmDelete.isConfirmed) {
                     return;
                 }
 
@@ -898,10 +985,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             });
         }
-        
-        loadNotifications();
 
+        loadNotifications();
         setInterval(loadNotifications, 30000);
     });
 </script>
+
+
 @endif
